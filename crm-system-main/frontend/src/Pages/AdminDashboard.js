@@ -147,6 +147,9 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductDetails, setShowProductDetails] = useState(false);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [rolesError, setRolesError] = useState('');
 
   // Ref to hold the current ticketsLoading state to prevent stale closures in useCallback
   const ticketsLoadingRef = useRef(ticketsLoading);
@@ -927,6 +930,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   // Function to navigate to the main sections
   const handleMainNavigation = (section) => {
+    if (section.toLowerCase().includes('crm')) {
+      navigate('/crm');
+      return;
+    }
     console.log(`Navigating to ${section}`);
     // Here you would implement the navigation or action for the main buttons
     // For now we'll just show an alert
@@ -2224,7 +2231,13 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                       <div className="avatar" style={{ backgroundImage: `url(${user.profile.avatar})` }}></div>
                     </div>
                     <h3 className="member-name">{user.profile.fullName}</h3>
-                    <p className="member-role">{user.profile.department}</p>
+                    <p className="member-role">
+                      {(() => {
+                        const userRoleId = user.profile.roleId;
+                        const foundRole = roles.find(r => r._id === userRoleId);
+                        return foundRole ? foundRole.name : user.profile.department;
+                      })()}
+                    </p>
                     <span className={`status-badge ${user.profile.status}`}>{user.profile.status}</span>
                     <div className="actions">
                       <button className="edit-btn" onClick={() => handleEditUser(user)}>Edit</button>
@@ -3002,9 +3015,15 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     }
   };
 
+  const CRM_PRODUCT_IDS = ['crm', 'crm-pro', 'PROD-CRM-001'];
+
   const handleViewProduct = (product) => {
-    setSelectedProduct(product);
-    setShowProductDetails(true);
+    if (CRM_PRODUCT_IDS.includes(product.productId)) {
+      navigate('/crm');
+    } else {
+      setSelectedProduct(product);
+      setShowProductDetails(true);
+    }
   };
 
   // Add a submit handler for the quotation form
@@ -3067,6 +3086,20 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       }
     }
   };
+
+  useEffect(() => {
+    if (openDialog) {
+      setRolesLoading(true);
+      setRolesError('');
+      const token = localStorage.getItem('token');
+      axios.get(`${API_URL}/api/users/roles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => setRoles(res.data))
+        .catch(err => setRolesError('Failed to load roles'))
+        .finally(() => setRolesLoading(false));
+    }
+  }, [openDialog]);
 
   return (
     <div className="admin-dashboard">
@@ -3341,6 +3374,27 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label>Role</label>
+                {rolesLoading ? (
+                  <div>Loading roles...</div>
+                ) : rolesError ? (
+                  <div className="error-message">{rolesError}</div>
+                ) : (
+                  <select
+                    value={formData.profile.roleId || ''}
+                    onChange={e => setFormData({
+                      ...formData,
+                      profile: { ...formData.profile, roleId: e.target.value }
+                    })}
+                  >
+                    <option value="">Select Role</option>
+                    {roles.map(role => (
+                      <option key={role._id} value={role._id}>{role.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div className="form-actions">
                 <button type="button" onClick={() => {

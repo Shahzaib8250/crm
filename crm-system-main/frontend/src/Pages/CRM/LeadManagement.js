@@ -64,7 +64,7 @@ const LeadManagement = () => {
         throw new Error('No token found');
       }
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await axios.get(`${baseUrl}/crm/customers?status=lead`, {
+      const response = await axios.get(`${baseUrl}/crm/leads`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLeads(response.data);
@@ -117,8 +117,8 @@ const LeadManagement = () => {
 
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const url = selectedLead
-        ? `${baseUrl}/crm/customers/${selectedLead._id}`
-        : `${baseUrl}/crm/customers`;
+        ? `${baseUrl}/crm/leads/${selectedLead._id}`
+        : `${baseUrl}/crm/leads`;
 
       const method = selectedLead ? 'put' : 'post';
 
@@ -151,7 +151,7 @@ const LeadManagement = () => {
       }
       
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      await axios.delete(`${baseUrl}/crm/customers/${id}`, {
+      await axios.delete(`${baseUrl}/crm/leads/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -247,7 +247,7 @@ const LeadManagement = () => {
   };
 
   return (
-    <div className="crm-container">
+    <div className="crm-lead-management animate-fade-in">
       {alert.show && (
         <div className={`alert ${alert.type}`}>
           {alert.message}

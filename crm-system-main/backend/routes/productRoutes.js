@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
 const { authenticateToken, authorizeRole } = require('../middleware/authMiddleware');
+const { checkPermission } = require('../middleware/roleMiddleware');
 
 // Product CRUD operations - SuperAdmin only
 router.post('/products', authenticateToken, authorizeRole('superadmin'), productController.createProduct);
@@ -24,5 +25,12 @@ router.get('/products', authenticateToken, productController.getAllProducts);
 
 // Public route - Access products via link
 router.get('/products/access/:accessLink', productController.getProductByAccessLink);
+
+// CRM Product management for enterprise (admin/sub-user)
+router.post('/crm/products', authenticateToken, checkPermission('products','add'), productController.createCrmProduct);
+router.get('/crm/products', authenticateToken, checkPermission('products','view'), productController.getCrmProducts);
+router.get('/crm/products/:id', authenticateToken, checkPermission('products','view'), productController.getCrmProductById);
+router.put('/crm/products/:id', authenticateToken, checkPermission('products','edit'), productController.updateCrmProduct);
+router.delete('/crm/products/:id', authenticateToken, checkPermission('products','delete'), productController.deleteCrmProduct);
 
 module.exports = router;

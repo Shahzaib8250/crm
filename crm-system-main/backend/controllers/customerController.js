@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const { ObjectId } = mongoose.Types;
 
 // Get all customers (filtered by user role and assigned admin)
-exports.getAllCustomers = async (req, res) => {
+const getAllCustomers = async (req, res) => {
   try {
     let query = {};
     
@@ -29,7 +29,7 @@ exports.getAllCustomers = async (req, res) => {
 };
 
 // Get single customer by ID (with permission check)
-exports.getCustomerById = async (req, res) => {
+const getCustomerById = async (req, res) => {
   try {
     const customer = await Customer.findById(req.params.id)
       .populate('assignedTo', 'email profile.fullName');
@@ -56,7 +56,7 @@ exports.getCustomerById = async (req, res) => {
 };
 
 // Create new customer
-exports.createCustomer = async (req, res) => {
+const createCustomer = async (req, res) => {
   try {
     const {
       firstName,
@@ -137,7 +137,7 @@ exports.createCustomer = async (req, res) => {
 };
 
 // Update customer
-exports.updateCustomer = async (req, res) => {
+const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -208,7 +208,7 @@ exports.updateCustomer = async (req, res) => {
 };
 
 // Delete customer
-exports.deleteCustomer = async (req, res) => {
+const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -259,7 +259,7 @@ exports.deleteCustomer = async (req, res) => {
 };
 
 // Get customer statistics
-exports.getCustomerStats = async (req, res) => {
+const getCustomerStats = async (req, res) => {
   try {
     let matchStage = {};
     
@@ -345,7 +345,7 @@ exports.getCustomerStats = async (req, res) => {
 };
 
 // Get recent customer activity
-exports.getRecentActivity = async (req, res) => {
+const getRecentActivity = async (req, res) => {
   try {
     let query = { 'entity.type': 'customer' };
     
@@ -375,7 +375,7 @@ exports.getRecentActivity = async (req, res) => {
 };
 
 // Add a deal to a customer
-exports.addDeal = async (req, res) => {
+const addDeal = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, value, status, expectedCloseDate, description } = req.body;
@@ -454,4 +454,15 @@ exports.addDeal = async (req, res) => {
       error: error.message 
     });
   }
+};
+
+module.exports = {
+  getAllCustomers,
+  getCustomerById,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  getCustomerStats,
+  getRecentActivity,
+  addDeal
 }; 

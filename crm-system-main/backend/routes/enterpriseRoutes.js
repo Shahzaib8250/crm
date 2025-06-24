@@ -6,6 +6,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const { checkPermission } = require('../middleware/roleMiddleware');
+const customerController = require('../controllers/customerController');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -270,5 +272,12 @@ router.put('/update/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Failed to update enterprise', error: error.message });
   }
 });
+
+// CRM Lead management for enterprise (admin/sub-user)
+router.post('/crm/leads', authenticateToken, checkPermission('leads','add'), customerController.createCustomer);
+router.get('/crm/leads', authenticateToken, checkPermission('leads','view'), customerController.getAllCustomers);
+router.get('/crm/leads/:id', authenticateToken, checkPermission('leads','view'), customerController.getCustomerById);
+router.put('/crm/leads/:id', authenticateToken, checkPermission('leads','edit'), customerController.updateCustomer);
+router.delete('/crm/leads/:id', authenticateToken, checkPermission('leads','delete'), customerController.deleteCustomer);
 
 module.exports = router; 

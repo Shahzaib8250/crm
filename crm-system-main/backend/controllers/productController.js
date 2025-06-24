@@ -8,7 +8,7 @@ const generateAccessLink = () => {
 };
 
 // Create a new product
-exports.createProduct = async (req, res) => {
+const createProduct = async (req, res) => {
   try {
     const { productId, name, description, icon, category, features, pricing, displayInMenu, menuOrder } = req.body;
     
@@ -52,7 +52,7 @@ exports.createProduct = async (req, res) => {
 };
 
 // Get all products - with optional filtering
-exports.getAllProducts = async (req, res) => {
+const getAllProducts = async (req, res) => {
   try {
     const { active, category } = req.query;
     
@@ -89,7 +89,7 @@ exports.getAllProducts = async (req, res) => {
 };
 
 // Get a single product by ID
-exports.getProductById = async (req, res) => {
+const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -118,7 +118,7 @@ exports.getProductById = async (req, res) => {
 };
 
 // Update a product
-exports.updateProduct = async (req, res) => {
+const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, icon, category, features, pricing, active, displayInMenu, menuOrder } = req.body;
@@ -165,7 +165,7 @@ exports.updateProduct = async (req, res) => {
 };
 
 // Delete a product
-exports.deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -204,7 +204,7 @@ exports.deleteProduct = async (req, res) => {
 };
 
 // Regenerate product access link
-exports.regenerateAccessLink = async (req, res) => {
+const regenerateAccessLink = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -242,7 +242,7 @@ exports.regenerateAccessLink = async (req, res) => {
 };
 
 // Get product by access link
-exports.getProductByAccessLink = async (req, res) => {
+const getProductByAccessLink = async (req, res) => {
   try {
     const { accessLink } = req.params;
     
@@ -266,7 +266,7 @@ exports.getProductByAccessLink = async (req, res) => {
 };
 
 // Grant product access to an admin
-exports.grantProductAccess = async (req, res) => {
+const grantProductAccess = async (req, res) => {
   try {
     const { adminId, productId } = req.params;
     
@@ -364,7 +364,7 @@ exports.grantProductAccess = async (req, res) => {
 };
 
 // Revoke product access from an admin
-exports.revokeProductAccess = async (req, res) => {
+const revokeProductAccess = async (req, res) => {
   try {
     const { adminId, productId } = req.params;
     
@@ -430,7 +430,7 @@ exports.revokeProductAccess = async (req, res) => {
 };
 
 // Get product usage analytics
-exports.getProductAnalytics = async (req, res) => {
+const getProductAnalytics = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -476,7 +476,7 @@ exports.getProductAnalytics = async (req, res) => {
 };
 
 // Get products an admin has access to
-exports.getAdminProducts = async (req, res) => {
+const getAdminProducts = async (req, res) => {
   try {
     const { adminId } = req.params;
     
@@ -511,4 +511,215 @@ exports.getAdminProducts = async (req, res) => {
     console.error('Error getting admin products:', error);
     res.status(500).json({ message: 'Failed to get admin products', error: error.message });
   }
+};
+
+// CRM Product management for enterprise (placeholders, can be customized for enterprise scope)
+const createCrmProduct = async (req, res) => {
+  try {
+    const { productId, name, description, icon, category, features, pricing, displayInMenu, menuOrder } = req.body;
+    
+    // Check if product with same ID already exists
+    const existingProduct = await Product.findOne({ productId });
+    if (existingProduct) {
+      return res.status(400).json({ message: 'A product with this ID already exists' });
+    }
+    
+    // Generate unique access link
+    const accessLink = generateAccessLink();
+    
+    const product = new Product({
+      productId,
+      name,
+      description,
+      icon: icon || '📋',
+      category: category || null, // Will be set by pre-save hook if null
+      features: features || [],
+      pricing: pricing || { isFree: true },
+      createdBy: req.user.id,
+      accessLink,
+      displayInMenu: displayInMenu !== undefined ? displayInMenu : true,
+      menuOrder: menuOrder || 100
+    });
+    
+    await product.save();
+    
+    // Generate access URL
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const accessUrl = `${baseUrl}/products/access/${accessLink}`;
+    
+    res.status(201).json({ 
+      product,
+      accessUrl
+    });
+  } catch (error) {
+    console.error('Error creating product:', error);
+    res.status(500).json({ message: 'Failed to create product', error: error.message });
+  }
+};
+
+const getCrmProducts = async (req, res) => {
+  try {
+    const { active, category } = req.query;
+    
+    // Build query
+    const query = {};
+    
+    // Filter by active status if provided
+    if (active !== undefined) {
+      query.active = active === 'true';
+    }
+    
+    // Filter by category if provided
+    if (category) {
+      query.category = category;
+    }
+    
+    const products = await Product.find(query).sort({ menuOrder: 1, createdAt: -1 });
+    
+    // Format the response
+    const formattedProducts = products.map(product => {
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const accessUrl = `${baseUrl}/products/access/${product.accessLink}`;
+      
+      return {
+        ...product.toObject(),
+        accessUrl
+      };
+    });
+    
+    res.json(formattedProducts);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch products', error: error.message });
+  }
+};
+
+const getCrmProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const product = await Product.findOne({ 
+      $or: [
+        { _id: id },
+        { productId: id }
+      ]
+    });
+    
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    // Generate access URL
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const accessUrl = `${baseUrl}/products/access/${product.accessLink}`;
+    
+    res.json({
+      ...product.toObject(),
+      accessUrl
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch product', error: error.message });
+  }
+};
+
+const updateCrmProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, icon, category, features, pricing, active, displayInMenu, menuOrder } = req.body;
+    
+    // Find the product by ID or productId
+    const product = await Product.findOne({ 
+      $or: [
+        { _id: id },
+        { productId: id }
+      ]
+    });
+    
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    // Update fields
+    if (name) product.name = name;
+    if (description) product.description = description;
+    if (icon) product.icon = icon;
+    if (category) product.category = category;
+    if (features) product.features = features;
+    if (pricing) product.pricing = pricing;
+    if (active !== undefined) product.active = active;
+    if (displayInMenu !== undefined) product.displayInMenu = displayInMenu;
+    if (menuOrder !== undefined) product.menuOrder = menuOrder;
+    
+    product.updatedAt = Date.now();
+    
+    await product.save();
+    
+    // Generate access URL
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const accessUrl = `${baseUrl}/products/access/${product.accessLink}`;
+    
+    res.json({
+      ...product.toObject(),
+      accessUrl
+    });
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({ message: 'Failed to update product', error: error.message });
+  }
+};
+
+const deleteCrmProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the product by ID or productId
+    const product = await Product.findOne({ 
+      $or: [
+        { _id: id },
+        { productId: id }
+      ]
+    });
+    
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    // Check if product is in use by any admin
+    const adminCount = await User.countDocuments({
+      'productAccess.productId': product.productId,
+      'productAccess.hasAccess': true
+    });
+    
+    if (adminCount > 0) {
+      return res.status(400).json({ 
+        message: `Cannot delete product that is being used by ${adminCount} admin(s)`,
+        adminCount
+      });
+    }
+    
+    await Product.findByIdAndDelete(product._id);
+    
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    res.status(500).json({ message: 'Failed to delete product', error: error.message });
+  }
+};
+
+module.exports = {
+  createProduct,
+  getAllProducts,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+  regenerateAccessLink,
+  getProductByAccessLink,
+  grantProductAccess,
+  revokeProductAccess,
+  getProductAnalytics,
+  getAdminProducts,
+  createCrmProduct,
+  getCrmProducts,
+  getCrmProductById,
+  updateCrmProduct,
+  deleteCrmProduct
 };

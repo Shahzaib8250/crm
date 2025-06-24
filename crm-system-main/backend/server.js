@@ -1726,6 +1726,10 @@ app.get('/api/status', authenticateToken, (req, res) => {
   });
 });
 
+// ... existing code ...
+app.get('/api/ping', (req, res) => res.json({ pong: true }));
+// ... existing code ...
+
 // --- Deal Management Routes ---
 
 // Get all deals

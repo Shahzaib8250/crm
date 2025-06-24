@@ -24,4 +24,28 @@ const isSuperAdmin = (req, res, next) => {
   return res.status(403).json({ message: 'Access denied. SuperAdmin privileges required.' });
 };
 
-module.exports = { isAdmin, isSuperAdmin };
+const EnterpriseRole = require('../models/EnterpriseRole');
+const User = require('../models/User');
+
+// Usage: checkPermission('products', 'edit')
+function checkPermission(module, action) {
+  return async (req, res, next) => {
+    try {
+      // Superadmin always allowed
+      if (req.user.role === 'superadmin') return next();
+      // Admins and users: check assigned role
+      const roleId = req.user.profile && req.user.profile.roleId;
+      if (!roleId) return res.status(403).json({ error: 'No role assigned' });
+      const role = await EnterpriseRole.findById(roleId);
+      if (!role) return res.status(403).json({ error: 'Role not found' });
+      if (role.permissions && role.permissions[module] && role.permissions[module][action]) {
+        return next();
+      }
+      return res.status(403).json({ error: 'Permission denied' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  };
+}
+
+module.exports = { isAdmin, isSuperAdmin, checkPermission };

@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/authMiddleware');
-const { isAdmin, isSuperAdmin } = require('../middleware/roleMiddleware');
+const { isAdmin, isSuperAdmin, checkPermission } = require('../middleware/roleMiddleware');
+const userController = require('../controllers/userController');
 
 // @route   GET api/users
 // @desc    Get all users
@@ -16,6 +17,9 @@ router.get('/', authenticateToken, isSuperAdmin, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Branding info (move this above /:id)
+router.get('/branding', authenticateToken, userController.getEnterpriseBranding);
 
 // @route   GET api/users/:id
 // @desc    Get user by ID
@@ -43,7 +47,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // @route   POST api/users
 // @desc    Create a new user
 // @access  Private/SuperAdmin
-router.post('/', authenticateToken, isSuperAdmin, async (req, res) => {
+router.post('/', authenticateToken, checkPermission('users','add'), async (req, res) => {
   try {
     const { email, password, profile, role } = req.body;
     
@@ -80,7 +84,7 @@ router.post('/', authenticateToken, isSuperAdmin, async (req, res) => {
 // @route   PUT api/users/:id
 // @desc    Update user
 // @access  Private/SuperAdmin or Self
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, checkPermission('users','edit'), async (req, res) => {
   try {
     // Check if user is updating their own data or is a superadmin
     if (req.user.id !== req.params.id && req.user.role !== 'superadmin') {
@@ -121,7 +125,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // @route   DELETE api/users/:id
 // @desc    Delete user
 // @access  Private/SuperAdmin
-router.delete('/:id', authenticateToken, isSuperAdmin, async (req, res) => {
+router.delete('/:id', authenticateToken, checkPermission('users','delete'), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     
@@ -137,5 +141,17 @@ router.delete('/:id', authenticateToken, isSuperAdmin, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Role management
+router.post('/roles', authenticateToken, userController.createRole);
+router.get('/roles', authenticateToken, userController.getRoles);
+router.put('/roles/:roleId', authenticateToken, userController.updateRole);
+router.delete('/roles/:roleId', authenticateToken, userController.deleteRole);
+
+// Assign role to sub-user
+router.post('/assign-role', authenticateToken, userController.assignRoleToUser);
+
+// Audit logs (admin only)
+router.get('/audit-logs', authenticateToken, userController.getAuditLogs);
 
 module.exports = router;

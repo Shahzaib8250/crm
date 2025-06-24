@@ -15,6 +15,12 @@ import SuperAdminServicesPage from './Pages/SuperAdminServicesPage';
 import AdminServicesPage from './Pages/AdminServicesPage';
 import { ThemeProvider } from './utils/ThemeContext';
 import ComplaintsManagement from './Pages/Complaints/ComplaintsManagement';
+import CRMDashboard from './Pages/CRM/CRMDashboard';
+import ProductManagement from './Pages/CRM/ProductManagement';
+import UserRoleManagement from './Pages/CRM/UserRoleManagement';
+import AuditLog from './Pages/CRM/AuditLog';
+import { NotificationProvider } from './utils/NotificationContext';
+import ErrorBoundary from './Components/ErrorBoundary';
 
 /**
  * App Component - Main routing setup for the CRM application
@@ -27,52 +33,58 @@ import ComplaintsManagement from './Pages/Complaints/ComplaintsManagement';
 const App = () => {
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/superadmin/login" element={<SuperAdminLogin />} />
-          
-          {/* Product Access Route */}
-          <Route path="/products/access/:accessLink" element={<ProductAccess />} />
+      <NotificationProvider>
+        <ErrorBoundary>
+          <Router>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+              
+              {/* Product Access Route */}
+              <Route path="/products/access/:accessLink" element={<ProductAccess />} />
 
-          {/* SuperAdmin Routes */}
-          <Route path="/superadmin" element={<SuperAdminDashboard />} />
-          <Route path="/superadmin/products" element={<SuperAdminDashboard />} />
-          <Route path="/superadmin/services" element={<SuperAdminServicesPage />} />
-          <Route path="/superadmin/services/create" element={<SuperAdminServicesPage />} />
-          <Route path="/superadmin/services/edit/:id" element={<SuperAdminServicesPage />} />
-          <Route path="/superadmin/enterprise" element={<SuperAdminDashboard />} />
-          <Route path="/superadmin/quotations" element={<SuperAdminServicesPage />} />
-          <Route path="/superadmin/invoices" element={<SuperAdminDashboard />} />
-          <Route path="/superadmin/reports" element={<SuperAdminDashboard />} />
-          <Route path="/superadmin/expenses" element={<SuperAdminDashboard />} />
-          <Route path="/superadmin/receipts" element={<SuperAdminDashboard />} />
-          <Route path="/superadmin/complaints" element={<ComplaintsManagement />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/crm" element={<AdminDashboard />} />
-          <Route path="/admin/services" element={<AdminDashboard activeTab="services" />} />
-          <Route path="/admin/hrm" element={<AdminDashboard />} />
-          <Route path="/admin/job-portal" element={<AdminDashboard />} />
-          <Route path="/admin/job-board" element={<AdminDashboard />} />
-          <Route path="/admin/projects" element={<AdminDashboard />} />
-          
-          {/* User Routes */}
-          <Route path="/user" element={<UserDashboard />} />
+              {/* SuperAdmin Routes */}
+              <Route path="/superadmin" element={<SuperAdminDashboard />} />
+              <Route path="/superadmin/products" element={<SuperAdminDashboard />} />
+              <Route path="/superadmin/services" element={<SuperAdminServicesPage />} />
+              <Route path="/superadmin/services/create" element={<SuperAdminServicesPage />} />
+              <Route path="/superadmin/services/edit/:id" element={<SuperAdminServicesPage />} />
+              <Route path="/superadmin/enterprise" element={<SuperAdminDashboard />} />
+              <Route path="/superadmin/quotations" element={<SuperAdminServicesPage />} />
+              <Route path="/superadmin/invoices" element={<SuperAdminDashboard />} />
+              <Route path="/superadmin/reports" element={<SuperAdminDashboard />} />
+              <Route path="/superadmin/expenses" element={<SuperAdminDashboard />} />
+              <Route path="/superadmin/receipts" element={<SuperAdminDashboard />} />
+              <Route path="/superadmin/complaints" element={<ComplaintsManagement />} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/crm" element={<AdminDashboard />} />
+              <Route path="/admin/services" element={<AdminDashboard activeTab="services" />} />
+              <Route path="/admin/hrm" element={<AdminDashboard />} />
+              <Route path="/admin/job-portal" element={<AdminDashboard />} />
+              <Route path="/admin/job-board" element={<AdminDashboard />} />
+              <Route path="/admin/projects" element={<AdminDashboard />} />
+              
+              {/* User Routes */}
+              <Route path="/user" element={<UserDashboard />} />
 
-          {/* CRM Routes */}
-          <Route path="/crm/customers" element={<CustomerManagement />} />
-          <Route path="/crm/leads" element={<LeadManagement />} />
-          <Route path="/crm/deals" element={<DealManagement />} />
-          <Route path="/superadmin/crm/customers" element={<SuperAdminCustomerManagement />} />
+              {/* CRM Dashboard & Modules */}
+              <Route path="/crm/*" element={<CRMDashboard />}>
+                <Route path="products" element={<ProductManagement />} />
+                <Route path="leads" element={<LeadManagement />} />
+                <Route path="users" element={<UserRoleManagement />} />
+                <Route path="audit-logs" element={<AuditLog />} />
+              </Route>
 
-          {/* Catch all route - redirect to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+              {/* Catch all route - redirect to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
+        </ErrorBoundary>
+      </NotificationProvider>
     </ThemeProvider>
   );
 };

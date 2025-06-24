@@ -8,6 +8,7 @@ const Product = require('../models/productModel');
 const productController = require('../controllers/productController');
 const { authenticateToken, authorizeRole, checkCrmAccess } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
+const authController = require('../controllers/authController');
 
 // Generate a unique access link token based on enterprise data
 const generateAccessLink = (enterpriseName = '') => {
@@ -680,6 +681,10 @@ router.get('/crm/overview', authenticateToken, authorizeRole('superadmin'), asyn
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// Grant/revoke product access for enterprise
+router.post('/grant-product-access', authenticateToken, authController.grantEnterpriseProductAccess);
+router.post('/revoke-product-access', authenticateToken, authController.revokeEnterpriseProductAccess);
 
 // Export router
 module.exports = router; 
