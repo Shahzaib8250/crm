@@ -26,7 +26,11 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       fullName: '',
       phone: '',
       department: '',
-      status: 'active'
+      status: 'active',
+      roleId: ''
+    },
+    permissions: {
+      crmAccess: false
     }
   });
   const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
@@ -588,7 +592,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       console.error('Error fetching products:', error);
       showAlert('Failed to fetch products', 'error');
     }
-  }, [userPermissions, showAlert]); // Add userPermissions as dependency
+  }, [userPermissions, showAlert]);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -779,15 +783,14 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        `${API_URL}/admin/create-user`,
+        `${API_URL}/api/users`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      showAlert('User created successfully', 'success');
+      showAlert(`User created! Login link: ${window.location.origin}/login | Email: ${formData.email} | Password: ${formData.password}`, 'success');
       setOpenDialog(false);
       resetForm();
       fetchUsers();
@@ -853,7 +856,11 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
         fullName: '',
         phone: '',
         department: '',
-        status: 'active'
+        status: 'active',
+        roleId: ''
+      },
+      permissions: {
+        crmAccess: false
       }
     });
     setSelectedUser(null);
@@ -3376,25 +3383,17 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                 </select>
               </div>
               <div className="form-group">
-                <label>Role</label>
-                {rolesLoading ? (
-                  <div>Loading roles...</div>
-                ) : rolesError ? (
-                  <div className="error-message">{rolesError}</div>
-                ) : (
-                  <select
-                    value={formData.profile.roleId || ''}
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={formData.permissions?.crmAccess || false}
                     onChange={e => setFormData({
                       ...formData,
-                      profile: { ...formData.profile, roleId: e.target.value }
+                      permissions: { ...formData.permissions, crmAccess: e.target.checked }
                     })}
-                  >
-                    <option value="">Select Role</option>
-                    {roles.map(role => (
-                      <option key={role._id} value={role._id}>{role.name}</option>
-                    ))}
-                  </select>
-                )}
+                  />
+                  CRM Access
+                </label>
               </div>
               <div className="form-actions">
                 <button type="button" onClick={() => {

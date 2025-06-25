@@ -28,28 +28,28 @@ export const logout = () => {
 
 // Admin management services
 export const fetchAdmins = async () => {
-  return authAxios().get('/superadmin/admins');
+  return authAxios().get('/api/users/admins');
 };
 
 export const createAdmin = async (adminData) => {
-  return authAxios().post('/superadmin/admins', adminData);
+  return authAxios().post('/api/users/admins', adminData);
 };
 
 export const updateAdmin = async (adminId, adminData) => {
-  return authAxios().put(`/superadmin/admins/${adminId}`, adminData);
+  return authAxios().put(`/api/users/admins/${adminId}`, adminData);
 };
 
 export const deleteAdmin = async (adminId) => {
-  return authAxios().delete(`/superadmin/admins/${adminId}`);
+  return authAxios().delete(`/api/users/admins/${adminId}`);
 };
 
 // Product management services
 export const fetchProducts = async () => {
-  return authAxios().get('/superadmin/products');
+  return authAxios().get('/api/products');
 };
 
 export const createProduct = async (productData) => {
-  return authAxios().post('/superadmin/products', productData);
+  return authAxios().post('/api/products', productData);
 };
 
 export const updateProduct = async (productId, productData) => {
@@ -57,7 +57,7 @@ export const updateProduct = async (productId, productData) => {
 };
 
 export const deleteProduct = async (productId) => {
-  return authAxios().delete(`/superadmin/products/${productId}`);
+  return authAxios().delete(`/api/products/${productId}`);
 };
 
 export const regenerateProductLink = async (productId) => {

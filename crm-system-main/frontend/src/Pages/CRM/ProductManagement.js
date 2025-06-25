@@ -24,7 +24,7 @@ const ProductManagement = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await axios.get(`${baseUrl}/crm/products`, {
+      const response = await axios.get(`${baseUrl}/api/products`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProducts(response.data);
@@ -48,8 +48,8 @@ const ProductManagement = () => {
       const token = localStorage.getItem('token');
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const url = selectedProduct
-        ? `${baseUrl}/crm/products/${selectedProduct._id}`
-        : `${baseUrl}/crm/products`;
+        ? `${baseUrl}/api/products/${selectedProduct._id}`
+        : `${baseUrl}/api/products`;
       const method = selectedProduct ? 'put' : 'post';
       await axios[method](url, formData, {
         headers: { Authorization: `Bearer ${token}` }
@@ -69,7 +69,7 @@ const ProductManagement = () => {
     try {
       const token = localStorage.getItem('token');
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      await axios.delete(`${baseUrl}/crm/products/${id}`, {
+      await axios.delete(`${baseUrl}/api/products/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       addNotification('Product deleted successfully', 'success');

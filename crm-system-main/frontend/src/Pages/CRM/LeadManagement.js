@@ -44,7 +44,7 @@ const LeadManagement = () => {
         return;
       }
 
-      const response = await axios.get(`${process.env.REACT_APP_API_URL || ''}/superadmin/admins`, {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL || ''}/api/users/admins`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -64,7 +64,7 @@ const LeadManagement = () => {
         throw new Error('No token found');
       }
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await axios.get(`${baseUrl}/crm/leads`, {
+      const response = await axios.get(`${baseUrl}/api/enterprise/crm/leads`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLeads(response.data);
@@ -117,8 +117,8 @@ const LeadManagement = () => {
 
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const url = selectedLead
-        ? `${baseUrl}/crm/leads/${selectedLead._id}`
-        : `${baseUrl}/crm/leads`;
+        ? `${baseUrl}/api/enterprise/crm/leads/${selectedLead._id}`
+        : `${baseUrl}/api/enterprise/crm/leads`;
 
       const method = selectedLead ? 'put' : 'post';
 
@@ -151,7 +151,7 @@ const LeadManagement = () => {
       }
       
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      await axios.delete(`${baseUrl}/crm/leads/${id}`, {
+      await axios.delete(`${baseUrl}/api/enterprise/crm/leads/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -192,7 +192,7 @@ const LeadManagement = () => {
       
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       await axios.post(
-        `${baseUrl}/crm/leads/${lead._id}/convert`,
+        `${baseUrl}/api/enterprise/crm/leads/${lead._id}/convert`,
         dealData,
         { headers: { Authorization: `Bearer ${token}` } }
       );

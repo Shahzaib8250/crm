@@ -77,6 +77,8 @@ const App = () => {
                 <Route path="leads" element={<LeadManagement />} />
                 <Route path="users" element={<UserRoleManagement />} />
                 <Route path="audit-logs" element={<AuditLog />} />
+                {/* Catch-all for invalid/nested CRM routes */}
+                <Route path="*" element={<Navigate to="/crm" replace />} />
               </Route>
 
               {/* Catch all route - redirect to home */}

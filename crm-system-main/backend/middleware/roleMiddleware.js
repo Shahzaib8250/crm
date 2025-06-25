@@ -34,11 +34,7 @@ function checkPermission(module, action) {
       // Superadmin always allowed
       if (req.user.role === 'superadmin') return next();
       // Admins and users: check assigned role
-      const roleId = req.user.profile && req.user.profile.roleId;
-      if (!roleId) return res.status(403).json({ error: 'No role assigned' });
-      const role = await EnterpriseRole.findById(roleId);
-      if (!role) return res.status(403).json({ error: 'Role not found' });
-      if (role.permissions && role.permissions[module] && role.permissions[module][action]) {
+      if (req.user.permissions && req.user.permissions[module] && req.user.permissions[module][action]) {
         return next();
       }
       return res.status(403).json({ error: 'Permission denied' });

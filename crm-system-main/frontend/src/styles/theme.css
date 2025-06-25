@@ -1,9 +1,9 @@
 :root {
-  /* Light Theme (Default) */
-  --primary-color: #4CAF50;  /* Green primary color */
-  --primary-hover: #45a049;
-  --primary-light: rgba(76, 175, 80, 0.1);
-  --primary-shadow: rgba(76, 175, 80, 0.25);
+  /* Light Theme (Enterprise Blue) */
+  --primary-color: #1a3e72;  /* Deep blue primary color */
+  --primary-hover: #234d99;
+  --primary-light: rgba(26, 62, 114, 0.08);
+  --primary-shadow: rgba(26, 62, 114, 0.15);
   
   --success-color: #2ecc71;
   --success-hover: #27ae60;
@@ -14,35 +14,35 @@
   --danger-color: #e74c3c;
   --danger-hover: #c0392b;
   
-  --text-primary: #2c3e50;
-  --text-secondary: #34495e;
+  --text-primary: #1a3e72;
+  --text-secondary: #234d99;
   --text-muted: #7f8c8d;
   
   --card-bg: #ffffff;
-  --content-bg: #f9f9f9;
-  --border-color: #ddd;
-  --border-light: #eee;
+  --content-bg: #f5f7fa;
+  --border-color: #c0d6f9;
+  --border-light: #eaeaea;
   
-  --background: #f5f7fa;
+  --background: #f0f2f5;
   
   /* Additional variables needed by components */
   --sidebar-bg: #ffffff;
-  --header-bg: #ffffff;
+  --header-bg: #f8f9fb;
   --input-bg: #ffffff;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 2px 4px rgba(26, 62, 114, 0.04);
+  --shadow-md: 0 4px 12px rgba(26, 62, 114, 0.08);
+  --shadow-lg: 0 10px 24px rgba(26, 62, 114, 0.12);
   --sidebar-width: 250px;
   --info-color: #2196F3;
   --info-hover: #1e88e5;
 }
 
 .dark-theme {
-  /* Dark Theme */
-  --primary-color: #4CAF50;  /* Keep same primary color for consistency */
-  --primary-hover: #45a049;
-  --primary-light: rgba(76, 175, 80, 0.15);
-  --primary-shadow: rgba(76, 175, 80, 0.25);
+  /* Dark Theme (Enterprise Blue) */
+  --primary-color: #1a3e72;
+  --primary-hover: #234d99;
+  --primary-light: rgba(26, 62, 114, 0.15);
+  --primary-shadow: rgba(26, 62, 114, 0.25);
   
   --success-color: #2ecc71;
   --success-hover: #27ae60;
@@ -53,24 +53,24 @@
   --danger-color: #e74c3c;
   --danger-hover: #c0392b;
   
-  --text-primary: #f5f5f5;
-  --text-secondary: #cccccc;
+  --text-primary: #f5f7fa;
+  --text-secondary: #c0d6f9;
   --text-muted: #999999;
   
-  --card-bg: #1e1e1e;
-  --content-bg: #121212;
-  --border-color: #333333;
+  --card-bg: #1e2235;
+  --content-bg: #181c2a;
+  --border-color: #234d99;
   --border-light: #2a2a2a;
   
-  --background: #121212;
+  --background: #121622;
   
   /* Additional variables needed by components */
-  --sidebar-bg: #1e1e1e;
-  --header-bg: #1e1e1e;
-  --input-bg: #2a2a2a;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --sidebar-bg: #1a2238;
+  --header-bg: #1a2238;
+  --input-bg: #232b47;
+  --shadow-sm: 0 2px 4px rgba(26, 62, 114, 0.15);
+  --shadow-md: 0 4px 12px rgba(26, 62, 114, 0.18);
+  --shadow-lg: 0 10px 24px rgba(26, 62, 114, 0.22);
   --info-color: #40c4ff;
   --info-hover: #00b0ff;
 } 

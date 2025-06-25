@@ -18,11 +18,19 @@ const createRole = async (req, res) => {
 // Get all roles for the enterprise
 const getRoles = async (req, res) => {
   try {
+    console.log('[GET ROLES] req.user:', req.user);
+    if (!req.user.enterprise || !req.user.enterprise.enterpriseId) {
+      console.warn('[GET ROLES] Forbidden: Missing enterprise info for user', req.user.email);
+      return res.status(403).json({ error: 'Forbidden: Enterprise information missing from user. Please contact your administrator.' });
+    }
     const enterpriseId = req.user.enterprise.enterpriseId;
+    console.log('[GET ROLES] Using enterpriseId:', enterpriseId);
     const roles = await EnterpriseRole.find({ enterpriseId });
+    console.log('[GET ROLES] Found roles:', roles);
     res.json(roles);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[GET ROLES] Error:', err);
+    res.status(500).json({ error: 'Internal server error fetching roles.' });
   }
 };
 
