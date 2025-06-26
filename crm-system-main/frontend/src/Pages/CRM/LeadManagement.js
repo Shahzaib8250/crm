@@ -43,11 +43,15 @@ const LeadManagement = () => {
         navigate('/login');
         return;
       }
-
+      // Only superadmin should fetch all admins
+      const tokenData = JSON.parse(atob(token.split('.')[1]));
+      if (tokenData.role !== 'superadmin') {
+        setAdmins([]);
+        return;
+      }
       const response = await axios.get(`${process.env.REACT_APP_API_URL || ''}/api/users/admins`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
       setAdmins(response.data);
     } catch (error) {
       console.error('Error fetching admins:', error);

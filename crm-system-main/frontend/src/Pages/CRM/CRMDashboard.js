@@ -75,6 +75,16 @@ const CRMDashboard = () => {
             {showSidebar ? '☰' : '☰'}
           </button>
           <span className="crm-dashboard-title">CRM Dashboard</span>
+          <button
+            className="logout-btn"
+            style={{ marginLeft: 'auto', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 600, cursor: 'pointer', fontSize: '1rem' }}
+            onClick={() => {
+              localStorage.clear();
+              navigate('/login');
+            }}
+          >
+            Logout
+          </button>
         </header>
         {/* Dashboard landing stats */}
         {isDashboardRoot && (

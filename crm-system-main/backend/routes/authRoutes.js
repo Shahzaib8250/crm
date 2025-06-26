@@ -23,7 +23,11 @@ router.post('/register', async (req, res) => {
       email,
       password,
       profile,
-      role: 'admin' // Default role
+      role: 'admin', // Default role
+      permissions: {
+        crmAccess: false,
+        leads: { view: true, add: true, edit: true, delete: true }
+      }
     });
 
     // Hash password
@@ -36,7 +40,8 @@ router.post('/register', async (req, res) => {
     const payload = {
       user: {
         id: user.id,
-        role: user.role
+        role: user.role,
+        enterprise: user.enterprise || null
       }
     };
 
@@ -78,7 +83,8 @@ router.post('/login', async (req, res) => {
     const payload = {
       user: {
         id: user.id,
-        role: user.role
+        role: user.role,
+        enterprise: user.enterprise || null
       }
     };
 

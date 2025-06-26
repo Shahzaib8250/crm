@@ -784,15 +784,16 @@ app.post('/login', async (req, res) => {
   
       // Generate token with full permissions data
     const token = jwt.sign(
-        { 
-          id: user._id, 
-          email: user.email, 
-          role: user.role,
-          permissions: user.permissions || {}
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+      { 
+        id: user._id, 
+        email: user.email, 
+        role: user.role,
+        permissions: user.permissions || {},
+        enterprise: user.enterprise || null
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
       console.log('Login successful (mock DB):', email);
       return res.json({
@@ -849,7 +850,8 @@ app.post('/login', async (req, res) => {
         id: user._id, 
         email: user.email, 
         role: user.role,
-        permissions: user.permissions || {}
+        permissions: user.permissions || {},
+        enterprise: user.enterprise || null
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }

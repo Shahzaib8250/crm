@@ -92,7 +92,8 @@ router.post('/create-admin', authenticateToken, authorizeRole('superadmin'), asy
       password: hashedPassword,
       role: 'admin',
       permissions: {
-        crmAccess: permissions?.crmAccess || false
+        crmAccess: permissions?.crmAccess || false,
+        leads: { view: true, add: true, edit: true, delete: true }
       },
       profile: {
         ...profile,
