@@ -31,7 +31,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     },
     permissions: {
       crmAccess: false
-    }
+    },
+    selectedProduct: '',
+    productPermissions: {},
+    specialPermissions: {},
   });
   const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
   const [activeTab, setActiveTab] = useState(initialActiveTab || 'dashboard');
@@ -484,18 +487,18 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         // Transform the API response to match the expected format
         const formattedProducts = response.data.map(product => {
-          // Check if user has access to this product using both permissions and productAccess
           let hasAccess = false;
-          
+          let grantedAt = null;
           // First check productAccess array (newer method)
           if (userPermissions.productAccess) {
             const productAccess = userPermissions.productAccess.find(p => p.productId === product.productId);
             hasAccess = productAccess && productAccess.hasAccess;
+            if (hasAccess && productAccess.grantedAt) {
+              grantedAt = new Date(productAccess.grantedAt);
+            }
           }
-          
           // Fallback to legacy permissions if productAccess doesn't have the info
           if (!hasAccess) {
-            // Map product IDs to permission keys
             if (product.productId === 'crm' || product.productId === 'crm-pro' || product.productId === 'PROD-CRM-001') {
               hasAccess = userPermissions.crmAccess;
             } else if (product.productId === 'hrm' || product.productId === 'hrms-basic' || product.productId === 'PROD-HRMS-001') {
@@ -508,7 +511,21 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
               hasAccess = userPermissions.projectManagementAccess;
             }
           }
-          
+          // If no grantedAt, fallback to joinDate or today
+          if (!grantedAt && hasAccess) {
+            if (currentUser && currentUser.profile && currentUser.profile.joinDate) {
+              grantedAt = new Date(currentUser.profile.joinDate);
+            } else {
+              grantedAt = new Date();
+            }
+          }
+          // Calculate endDate as 1 month after grantedAt
+          let endDate = null;
+          if (hasAccess && grantedAt) {
+            const end = new Date(grantedAt);
+            end.setMonth(end.getMonth() + 1);
+            endDate = end;
+          }
           return {
             id: product.productId || product._id,
             name: product.name,
@@ -516,12 +533,11 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
             icon: product.icon || '📋',
             productId: product.productId,
             purchased: hasAccess,
-            startDate: hasAccess ? new Date().toLocaleDateString() : null,
-            endDate: hasAccess ? new Date(Date.now() + 365*24*60*60*1000).toLocaleDateString() : null,
+            startDate: hasAccess && grantedAt ? grantedAt.toLocaleDateString() : null,
+            endDate: hasAccess && endDate ? endDate.toLocaleDateString() : null,
             hasAccess: hasAccess
           };
         });
-        
         setProducts(formattedProducts);
         console.log('Products loaded from API:', formattedProducts);
       } else {
@@ -592,7 +608,14 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       console.error('Error fetching products:', error);
       showAlert('Failed to fetch products', 'error');
     }
-  }, [userPermissions, showAlert]);
+  }, [userPermissions, showAlert, currentUser]);
+
+  // Update useEffect to call fetchProducts when currentUser or userPermissions change
+  useEffect(() => {
+    if (currentUser && userPermissions) {
+      fetchProducts();
+    }
+  }, [currentUser, userPermissions, fetchProducts]);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -785,9 +808,18 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     if (!validateForm()) return;
     try {
       const token = localStorage.getItem('token');
+      // Prepare user data with product and permissions
+      const userPayload = {
+        ...formData,
+        productAccess: [{
+          productId: formData.selectedProduct,
+          permissions: formData.productPermissions || {},
+        }],
+        specialPermissions: formData.specialPermissions || {},
+      };
       await axios.post(
         `${API_URL}/api/users`,
-        formData,
+        userPayload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       showAlert(`User created! Login link: ${window.location.origin}/login | Email: ${formData.email} | Password: ${formData.password}`, 'success');
@@ -861,7 +893,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       },
       permissions: {
         crmAccess: false
-      }
+      },
+      selectedProduct: '',
+      productPermissions: {},
+      specialPermissions: {},
     });
     setSelectedUser(null);
     setFormErrors({});
@@ -3383,16 +3418,51 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                 </select>
               </div>
               <div className="form-group">
+                <label>Product Access *</label>
+                <select
+                  value={formData.selectedProduct || ''}
+                  onChange={e => setFormData({
+                    ...formData,
+                    selectedProduct: e.target.value,
+                    // Reset permissions when product changes
+                    productPermissions: {},
+                  })}
+                  required
+                >
+                  <option value="">Select a product</option>
+                  {products.map(product => (
+                    <option key={product.productId || product._id} value={product.productId || product._id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Product-specific permissions */}
+              {formData.selectedProduct === 'crm' && (
+                <div className="form-group">
+                  <label>CRM Permissions</label>
+                  <div className="checkbox-group">
+                    <label><input type="checkbox" checked={formData.productPermissions?.createLead || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, createLead: e.target.checked } })}/> Create Lead</label>
+                    <label><input type="checkbox" checked={formData.productPermissions?.editLead || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, editLead: e.target.checked } })}/> Edit Lead</label>
+                    <label><input type="checkbox" checked={formData.productPermissions?.deleteLead || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, deleteLead: e.target.checked } })}/> Delete Lead</label>
+                    <label><input type="checkbox" checked={formData.productPermissions?.addProduct || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, addProduct: e.target.checked } })}/> Add Product</label>
+                    <label><input type="checkbox" checked={formData.productPermissions?.deleteProduct || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, deleteProduct: e.target.checked } })}/> Delete Product</label>
+                    <label><input type="checkbox" checked={formData.productPermissions?.editProduct || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, editProduct: e.target.checked } })}/> Edit Product</label>
+                  </div>
+                </div>
+              )}
+              {/* Special permission: Add Users */}
+              <div className="form-group">
                 <label>
                   <input
                     type="checkbox"
-                    checked={formData.permissions?.crmAccess || false}
+                    checked={formData.specialPermissions?.addUsers || false}
                     onChange={e => setFormData({
                       ...formData,
-                      permissions: { ...formData.permissions, crmAccess: e.target.checked }
+                      specialPermissions: { ...formData.specialPermissions, addUsers: e.target.checked }
                     })}
                   />
-                  CRM Access
+                  Add Users (can manage new users and grant only their own access)
                 </label>
               </div>
               <div className="form-actions">
