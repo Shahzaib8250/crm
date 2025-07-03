@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import AdminSidebar from '../../Components/Layout/AdminSidebar';
 import ThemeToggle from '../../Components/ThemeToggle';
 import axios from 'axios';
 import './CRM.css';
 import { useNotification } from '../../utils/NotificationContext';
+import ServiceManagement from './ServiceManagement';
+import ProductManagement from './ProductManagement';
+import LeadManagement from './LeadManagement';
+import UserRoleManagement from './UserRoleManagement';
+import AuditLog from './AuditLog';
 
 const CRMDashboard = () => {
   const [branding, setBranding] = useState({ logo: '', companyName: '', colors: {} });
@@ -56,6 +61,7 @@ const CRMDashboard = () => {
         <nav className="crm-nav">
           <NavLink to="." end className={({ isActive }) => isActive ? 'active' : ''}>Dashboard</NavLink>
           <NavLink to="products" className={({ isActive }) => isActive ? 'active' : ''}>Products</NavLink>
+          <NavLink to="services" className={({ isActive }) => isActive ? 'active' : ''}>Services</NavLink>
           <NavLink to="leads" className={({ isActive }) => isActive ? 'active' : ''}>Leads</NavLink>
           <NavLink to="users" className={({ isActive }) => isActive ? 'active' : ''}>Users & Roles</NavLink>
           <NavLink to="audit-logs" className={({ isActive }) => isActive ? 'active' : ''}>Audit Logs</NavLink>
@@ -115,6 +121,14 @@ const CRMDashboard = () => {
         )}
         {/* Animated module transitions (placeholder) */}
         <div className="crm-module-content animate-fade-in">
+          <Routes>
+            <Route path="products" element={<ProductManagement />} />
+            <Route path="services" element={<ServiceManagement />} />
+            <Route path="leads" element={<LeadManagement />} />
+            <Route path="users" element={<UserRoleManagement />} />
+            <Route path="audit-logs" element={<AuditLog />} />
+            <Route index element={isDashboardRoot ? null : <Navigate to="." />} />
+          </Routes>
           <Outlet />
         </div>
       </main>

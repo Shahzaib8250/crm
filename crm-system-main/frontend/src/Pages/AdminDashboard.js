@@ -2261,15 +2261,24 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
         return (
           <div className="section-container">
               <h1 className="section-title">User Management</h1>
-              <button 
-                className="create-btn" 
-                onClick={() => {
-                  resetForm();
-                  setOpenDialog(true);
-                }}
-              >
-                Create New User
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'row', gap: '12px', marginBottom: '16px' }}>
+                <button 
+                  className="create-btn" 
+                  onClick={() => {
+                    resetForm();
+                    setOpenDialog(true);
+                  }}
+                >
+                  + Create New User
+                </button>
+                <button
+                  className="create-btn"
+                  style={{ background: '#1976d2', color: '#fff' }}
+                  onClick={() => window.location.href = '/subuser/login'}
+                >
+                  Subuser Login
+                </button>
+              </div>
               
               <div className="team-members-grid">
               {(users || []).length > 0 ? (

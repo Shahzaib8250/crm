@@ -120,3 +120,11 @@ export const deleteService = async (serviceId) => {
 export const getServiceStats = async () => {
   return authAxios().get('/services/superadmin/stats/summary');
 };
+
+export const getCurrentUserProfile = async (userId) => {
+  return authAxios().get(`/api/users/${userId}`);
+};
+
+export const updateCurrentUserProfile = async (userId, profileData) => {
+  return authAxios().put(`/api/users/${userId}`, profileData);
+};
