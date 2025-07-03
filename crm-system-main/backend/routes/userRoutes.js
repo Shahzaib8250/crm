@@ -4,13 +4,27 @@ const User = require('../models/User');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const { isAdmin, isSuperAdmin, checkPermission } = require('../middleware/roleMiddleware');
 const userController = require('../controllers/userController');
+const bcrypt = require('bcryptjs');
+
+// Middleware to allow both admin and superadmin
+const isAdminOrSuperAdmin = (req, res, next) => {
+  if (req.user.role === 'admin' || req.user.role === 'superadmin') return next();
+  return res.status(403).json({ message: 'Access denied. Admin or SuperAdmin privileges required.' });
+};
 
 // @route   GET api/users
 // @desc    Get all users
 // @access  Private/SuperAdmin
-router.get('/', authenticateToken, isSuperAdmin, async (req, res) => {
+router.get('/', authenticateToken, isAdminOrSuperAdmin, async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    let users;
+    if (req.user.role === 'superadmin') {
+      users = await User.find().select('-password');
+    } else if (req.user.role === 'admin') {
+      users = await User.find({ createdBy: req.user._id }).select('-password');
+    } else {
+      users = [];
+    }
     res.json(users);
   } catch (error) {
     console.error('Get users error:', error.message);
@@ -49,23 +63,27 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // @access  Private/SuperAdmin
 router.post('/', authenticateToken, checkPermission('users','add'), async (req, res) => {
   try {
-    const { email, password, profile, role } = req.body;
-    
+    const { email, password, profile, role, createdBy, productAccess } = req.body;
+    // Validation: createdBy is required for user role
+    if ((role === 'user' || !role) && !createdBy) {
+      return res.status(400).json({ message: 'createdBy is required for user role' });
+    }
     // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
       return res.status(400).json({ message: 'User already exists' });
     }
-    
+    // Hash the password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
     user = new User({
       email,
-      password,
+      password: hashedPassword,
       profile,
-      role: role || 'admin' // Default to admin if not specified
+      role: role || 'admin', // Default to admin if not specified
+      createdBy: (role === 'user' || !role) ? createdBy : undefined,
+      productAccess: Array.isArray(productAccess) ? productAccess : []
     });
-    
     await user.save();
-    
     res.status(201).json({
       message: 'User created successfully',
       user: {
@@ -76,7 +94,7 @@ router.post('/', authenticateToken, checkPermission('users','add'), async (req, 
       }
     });
   } catch (error) {
-    console.error('Create user error:', error.message);
+    console.error('Create user error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

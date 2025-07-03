@@ -22,6 +22,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    role: 'user',
     profile: {
       fullName: '',
       phone: '',
@@ -32,8 +33,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     permissions: {
       crmAccess: false
     },
-    selectedProduct: '',
-    productPermissions: {},
+    productAccessList: [],
     specialPermissions: {},
   });
   const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
@@ -218,10 +218,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   }, []); // Empty dependency array since we only need to set up the event listener once
 
   // Add showAlert function if not present
-  const showAlert = (message, type = 'success') => {
+  const showAlert = useCallback((message, type = 'success') => {
     setAlert({ show: true, message, type });
     setTimeout(() => setAlert({ show: false, message: '', type: 'success' }), 3000);
-  };
+  }, []);
 
   const checkAuth = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -289,12 +289,12 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       }
       return false;
     }
-  }, [navigate]);
+  }, [navigate, showAlert]);
 
   const fetchUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/admin/users`, {
+      const response = await axios.get(`${API_URL}/api/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(response.data);
@@ -805,18 +805,24 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    // Only validate locked rows
+    const lockedAccess = (formData.productAccessList || []).filter(pa => pa.locked && pa.productId);
+    if (lockedAccess.length === 0) {
+      showAlert('Please add at least one product access.', 'error');
+      return;
+    }
     if (!validateForm()) return;
     try {
       const token = localStorage.getItem('token');
-      // Prepare user data with product and permissions
+      // Prepare user data with multiple products and permissions
       const userPayload = {
         ...formData,
-        productAccess: [{
-          productId: formData.selectedProduct,
-          permissions: formData.productPermissions || {},
-        }],
+        productAccess: lockedAccess,
         specialPermissions: formData.specialPermissions || {},
       };
+      if (formData.role === 'user' && currentUser && currentUser._id) {
+        userPayload.createdBy = currentUser._id;
+      }
       await axios.post(
         `${API_URL}/api/users`,
         userPayload,
@@ -884,6 +890,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     setFormData({
       email: '',
       password: '',
+      role: 'user',
       profile: {
         fullName: '',
         phone: '',
@@ -894,8 +901,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       permissions: {
         crmAccess: false
       },
-      selectedProduct: '',
-      productPermissions: {},
+      productAccessList: [],
       specialPermissions: {},
     });
     setSelectedUser(null);
@@ -1075,7 +1081,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                     <p>Loading services...</p>
                     <p className="loading-message">This may take a moment. If loading persists, data will be displayed automatically.</p>
                   </div>
-                ) : services.length === 0 ? (
+                ) : (services || []).length === 0 ? (
                   <div className="no-data-container">
                     <p>No services are currently available.</p>
                     <button 
@@ -1092,7 +1098,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                   </div>
                 ) : (
                   <div className="services-grid">
-                    {services.map((service) => (
+                    {(services || []).map((service) => (
                       <div key={service._id || service.id} className="service-card">
                         <div className="service-card-header">
                           <span className="service-icon">{service.icon}</span>
@@ -1153,7 +1159,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                     <p>Loading quotations...</p>
                     <p className="loading-message">This may take a moment. If loading persists, data will be displayed automatically.</p>
                   </div>
-                ) : quotations.length === 0 ? (
+                ) : (quotations || []).length === 0 ? (
                   <div className="no-data-container">
                     <p>You haven't requested any quotations yet. Go to the Services tab to request a quotation.</p>
                     <button 
@@ -1181,7 +1187,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {quotations.map((quotation) => (
+                        {(quotations || []).map((quotation) => (
                           <tr key={quotation._id || quotation.id} className={quotation.status === 'approved' ? 'highlight-row' : ''}>
                             <td>{quotation.serviceId?.name || 'Unknown Service'}</td>
                             <td>{new Date(quotation.createdAt).toLocaleDateString()}</td>
@@ -1236,8 +1242,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {products && products.length > 0 ? (
-                    products.map(product => (
+                  {(products || []).length > 0 ? (
+                    (products || []).map(product => (
                       <tr key={product.id} className={product.purchased ? 'product-row purchased' : 'product-row'}>
                         <td className="product-icon">{product.icon}</td>
                         <td className="product-name">{product.name}</td>
@@ -1890,8 +1896,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
             <div className="quotations-list">
               {isLoading ? (
                 <div className="loading-state">Loading quotations...</div>
-              ) : quotations.length > 0 ? (
-                quotations.map(quotation => (
+              ) : (quotations || []).length > 0 ? (
+                (quotations || []).map(quotation => (
                   <div key={quotation._id || quotation.id} className="quotation-card">
                     <h3>Quotation #{quotation._id ? quotation._id.slice(-5) : quotation.id || 'N/A'}</h3>
                     <p>Service: {quotation.service || 'Not specified'}</p>
@@ -1950,7 +1956,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                             required
                           >
                             <option value="">Select a service</option>
-                            {services.map(service => (
+                            {(services || []).map(service => (
                               <option key={service._id} value={service._id}>
                                 {service.name}
                               </option>
@@ -2128,8 +2134,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {invoices && invoices.length > 0 ? (
-                      invoices.map(invoice => {
+                    {(invoices || []).length > 0 ? (
+                      (invoices || []).map(invoice => {
                         const status = getInvoiceStatus(invoice);
                         // Get a display name for the invoice (service/quotation/product)
                         let displayName = '';
@@ -2236,11 +2242,11 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                 <div className="loading-indicator">Loading tickets...</div>
               ) : ticketsError ? (
                 <div className="error-message">{ticketsError}</div>
-              ) : tickets.length === 0 ? (
+              ) : (tickets || []).length === 0 ? (
                 <div className="no-tickets">No tickets found.</div>
               ) : (
                 <TicketList
-                  tickets={tickets}
+                  tickets={(tickets || [])}
                   onSelectTicket={() => { /* Admin doesn't need to select individual tickets for detail */ } }
                   onManageTicket={() => { /* Admin doesn't manage tickets like SuperAdmin */ } }
                   onDeleteTicket={ticket => handleDeleteTicket(ticket)}
@@ -2266,8 +2272,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
               </button>
               
               <div className="team-members-grid">
-              {users.length > 0 ? (
-                users.map(user => (
+              {(users || []).length > 0 ? (
+                (users || []).map(user => (
                   <div key={user._id} className="team-member-card">
                     <div className="avatar-container">
                       <div className="avatar" style={{ backgroundImage: `url(${user.profile.avatar})` }}></div>
@@ -2276,7 +2282,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                     <p className="member-role">
                       {(() => {
                         const userRoleId = user.profile.roleId;
-                        const foundRole = roles.find(r => r._id === userRoleId);
+                        const foundRole = (roles || []).find(r => r._id === userRoleId);
                         return foundRole ? foundRole.name : user.profile.department;
                       })()}
                     </p>
@@ -3419,39 +3425,248 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
               </div>
               <div className="form-group">
                 <label>Product Access *</label>
+                {formData.productAccessList.map((access, idx) => {
+                  const isLocked = access.locked;
+                  return (
+                    <div key={idx} style={{ marginBottom: '16px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <select
-                  value={formData.selectedProduct || ''}
-                  onChange={e => setFormData({
-                    ...formData,
-                    selectedProduct: e.target.value,
-                    // Reset permissions when product changes
-                    productPermissions: {},
-                  })}
-                  required
+                          value={access.productId}
+                          onChange={e => {
+                            if (isLocked) return;
+                            const updated = [...formData.productAccessList];
+                            updated[idx].productId = e.target.value;
+                            setFormData({ ...formData, productAccessList: updated });
+                          }}
+                          disabled={isLocked}
                 >
                   <option value="">Select a product</option>
-                  {products.map(product => (
+                  {(products || []).map(product => (
                     <option key={product.productId || product._id} value={product.productId || product._id}>
                       {product.name}
                     </option>
                   ))}
                 </select>
+                        {/* Remove button only for locked rows */}
+                        {isLocked && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                productAccessList: formData.productAccessList.filter((_, i) => i !== idx)
+                              });
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
               </div>
-              {/* Product-specific permissions */}
-              {formData.selectedProduct === 'crm' && (
-                <div className="form-group">
-                  <label>CRM Permissions</label>
+                      {/* Show permissions only if product is selected */}
+                      {access.productId && (
+                        <div style={{ marginTop: '8px', marginLeft: '8px' }}>
+                          <label style={{ fontWeight: 500 }}>Permissions:</label>
                   <div className="checkbox-group">
-                    <label><input type="checkbox" checked={formData.productPermissions?.createLead || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, createLead: e.target.checked } })}/> Create Lead</label>
-                    <label><input type="checkbox" checked={formData.productPermissions?.editLead || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, editLead: e.target.checked } })}/> Edit Lead</label>
-                    <label><input type="checkbox" checked={formData.productPermissions?.deleteLead || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, deleteLead: e.target.checked } })}/> Delete Lead</label>
-                    <label><input type="checkbox" checked={formData.productPermissions?.addProduct || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, addProduct: e.target.checked } })}/> Add Product</label>
-                    <label><input type="checkbox" checked={formData.productPermissions?.deleteProduct || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, deleteProduct: e.target.checked } })}/> Delete Product</label>
-                    <label><input type="checkbox" checked={formData.productPermissions?.editProduct || false} onChange={e => setFormData({ ...formData, productPermissions: { ...formData.productPermissions, editProduct: e.target.checked } })}/> Edit Product</label>
+                            {access.productId === 'crm' ? (
+                              <>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.createLead || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        createLead: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Create Lead
+                                </label>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.editLead || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        editLead: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Edit Lead
+                                </label>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.deleteLead || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        deleteLead: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Delete Lead
+                                </label>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.addProduct || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        addProduct: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Add Product
+                                </label>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.deleteProduct || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        deleteProduct: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Delete Product
+                                </label>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.editProduct || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        editProduct: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Edit Product
+                                </label>
+                              </>
+                            ) : (
+                              <>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.canView || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        canView: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Can View
+                                </label>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.canEdit || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        canEdit: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Can Edit
+                                </label>
+                                <label style={{ marginRight: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={access.permissions?.canDelete || false}
+                                    onChange={e => {
+                                      if (isLocked) return;
+                                      const updated = [...formData.productAccessList];
+                                      updated[idx].permissions = {
+                                        ...updated[idx].permissions,
+                                        canDelete: e.target.checked
+                                      };
+                                      setFormData({ ...formData, productAccessList: updated });
+                                    }}
+                                    disabled={isLocked}
+                                  />
+                                  Can Delete
+                                </label>
+                              </>
+                            )}
                   </div>
                 </div>
               )}
-              {/* Special permission: Add Users */}
+                      {/* Add Product Access button only for unlocked row */}
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          style={{ marginTop: '8px' }}
+                          onClick={() => {
+                            // Lock this row
+                            const updated = [...formData.productAccessList];
+                            updated[idx].locked = true;
+                            setFormData({ ...formData, productAccessList: updated });
+                          }}
+                          disabled={!access.productId}
+                        >
+                          Add Product Access
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Show Add Product Access button only if there is no unlocked row */}
+                {formData.productAccessList.every(pa => pa.locked) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        productAccessList: [
+                          ...formData.productAccessList,
+                          { productId: '', permissions: {}, locked: false }
+                        ]
+                      });
+                    }}
+                  >
+                    Add Product Access
+                  </button>
+                )}
+              </div>
               <div className="form-group">
                 <label>
                   <input
