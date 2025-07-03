@@ -21,6 +21,11 @@ import UserRoleManagement from './Pages/CRM/UserRoleManagement';
 import AuditLog from './Pages/CRM/AuditLog';
 import { NotificationProvider } from './utils/NotificationContext';
 import ErrorBoundary from './Components/ErrorBoundary';
+import SubUserLogin from './Pages/SubUserLogin';
+import SubuserTickets from './Pages/SubuserTickets';
+import SubuserProducts from './Pages/SubuserProducts';
+import SubuserProfile from './Pages/SubuserProfile';
+import SubuserNotifications from './Pages/SubuserNotifications';
 
 /**
  * App Component - Main routing setup for the CRM application
@@ -41,6 +46,7 @@ const App = () => {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+              <Route path="/subuser/login" element={<SubUserLogin />} />
               
               {/* Product Access Route */}
               <Route path="/products/access/:accessLink" element={<ProductAccess />} />
@@ -69,7 +75,13 @@ const App = () => {
               <Route path="/admin/projects" element={<AdminDashboard />} />
               
               {/* User Routes */}
-              <Route path="/user" element={<UserDashboard />} />
+              <Route path="/user/*" element={<UserDashboard />}>
+                <Route index element={<UserDashboard.WelcomeModule />} />
+                <Route path="tickets" element={<SubuserTickets />} />
+                <Route path="products" element={<SubuserProducts />} />
+                <Route path="profile" element={<SubuserProfile />} />
+                <Route path="notifications" element={<SubuserNotifications />} />
+              </Route>
 
               {/* CRM Dashboard & Modules */}
               <Route path="/crm/*" element={<CRMDashboard />}>

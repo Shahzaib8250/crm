@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './CRM.css';
 import { useNotification } from '../../utils/NotificationContext';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -16,6 +17,7 @@ const UserRoleManagement = () => {
     permissions: '{}', // JSON string
   });
   const [creating, setCreating] = useState(false);
+  const navigate = useNavigate();
 
   const fetchRoles = async () => {
     setLoading(true);
