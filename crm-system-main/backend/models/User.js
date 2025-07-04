@@ -72,8 +72,7 @@ const userSchema = new mongoose.Schema({
     enterpriseId: {
       type: String,
       trim: true,
-      sparse: true,
-      unique: true
+      sparse: true
     },
     companyName: {
       type: String,

@@ -34,7 +34,19 @@ const HomePage = () => {
                 '&:hover': { backgroundColor: '#1565c0' }
               }}
             >
-              Admin / User Login
+              Admin Login
+            </Button>
+
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => navigate('/user/login')}
+              sx={{ 
+                backgroundColor: '#0288d1',
+                '&:hover': { backgroundColor: '#0277bd' }
+              }}
+            >
+              User Login
             </Button>
             
             <Typography variant="body2" sx={{ my: 1 }}>

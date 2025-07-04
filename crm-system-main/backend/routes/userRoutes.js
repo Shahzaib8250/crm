@@ -75,13 +75,31 @@ router.post('/', authenticateToken, checkPermission('users','add'), async (req, 
     }
     // Hash the password before saving
     const hashedPassword = await bcrypt.hash(password, 10);
+    // Copy enterprise fields from the creating admin (req.user.enterprise)
+    const adminEnterprise = req.user.enterprise || {};
+    const enterprise = {
+      enterpriseId: adminEnterprise.enterpriseId || '',
+      companyName: adminEnterprise.companyName || '',
+      logo: adminEnterprise.logo || '',
+      address: adminEnterprise.address || '',
+      mailingAddress: adminEnterprise.mailingAddress || '',
+      city: adminEnterprise.city || '',
+      country: adminEnterprise.country || '',
+      zipCode: adminEnterprise.zipCode || '',
+      phoneNumber: adminEnterprise.phoneNumber || '',
+      companyEmail: adminEnterprise.companyEmail || '',
+      loginLink: adminEnterprise.loginLink || '',
+      industry: adminEnterprise.industry || '',
+      businessType: adminEnterprise.businessType || ''
+    };
     user = new User({
       email,
       password: hashedPassword,
       profile,
       role: role || 'admin', // Default to admin if not specified
       createdBy: (role === 'user' || !role) ? createdBy : undefined,
-      productAccess: Array.isArray(productAccess) ? productAccess : []
+      productAccess: Array.isArray(productAccess) ? productAccess : [],
+      enterprise
     });
     await user.save();
     res.status(201).json({

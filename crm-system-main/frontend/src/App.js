@@ -47,6 +47,7 @@ const App = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/superadmin/login" element={<SuperAdminLogin />} />
               <Route path="/subuser/login" element={<SubUserLogin />} />
+              <Route path="/user/login" element={<SubUserLogin />} />
               
               {/* Product Access Route */}
               <Route path="/products/access/:accessLink" element={<ProductAccess />} />

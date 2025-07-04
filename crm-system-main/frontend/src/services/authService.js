@@ -73,11 +73,14 @@ export const getUserInfo = () => {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(window.atob(base64));
-    
+    // Support both { id, email, role, enterprise } and { user: { ... } }
+    const user = payload.user || payload;
     return {
-      id: payload.id,
-      email: payload.email,
-      role: payload.role
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      profile: user.profile || {},
+      enterprise: user.enterprise || null
     };
   } catch (error) {
     console.error('Error getting user info:', error);

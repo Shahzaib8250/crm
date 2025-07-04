@@ -1,6 +1,6 @@
 // src/SuperAdminDashboard.js
 import React from 'react';
-import { useNavigate, NavLink, Outlet } from 'react-router-dom';
+import { useNavigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { getUserInfo, logout } from '../services/authService';
 import './UserDashboard.css';
 import SubuserTickets from './SubuserTickets';
@@ -24,7 +24,7 @@ const ProductsModule = () => (
 
 const WelcomeModule = ({ user }) => (
   <section className="subuser-welcome-card">
-    <h2>Welcome, {user?.email || 'Subuser'}!</h2>
+    <h2>Welcome, {user?.profile?.fullName || 'User'}!</h2>
     <p>
       This is your personalized dashboard. Here you can view your profile, tasks, and notifications. If you need help, contact your enterprise admin.
     </p>
@@ -48,16 +48,20 @@ const WelcomeModule = ({ user }) => (
 const UserDashboard = () => {
   const navigate = useNavigate();
   const user = getUserInfo();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/subuser/login');
   };
 
+  // Render WelcomeModule for /user root route
+  const isRoot = location.pathname === '/user' || location.pathname === '/user/';
+
   return (
     <div className="subuser-dashboard-root">
       <aside className="subuser-sidebar">
-        <div className="sidebar-logo">MOAQA</div>
+        <div className="sidebar-logo">{user?.enterprise?.companyName || 'MOAQA'}</div>
         <nav className="sidebar-nav">
           <NavLink to="/user" end className={({ isActive }) => isActive ? 'active' : ''}><span className="icon">🏠</span> Dashboard</NavLink>
           <NavLink to="/user/tickets" className={({ isActive }) => isActive ? 'active' : ''}><span className="icon">🎫</span> Tickets</NavLink>
@@ -75,7 +79,7 @@ const UserDashboard = () => {
             <span className="user-email">{user?.email}</span>
           </div>
         </header>
-        <Outlet />
+        {isRoot ? <WelcomeModule user={user} /> : <Outlet />}
       </main>
     </div>
   );

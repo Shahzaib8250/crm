@@ -782,14 +782,30 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
   
-      // Generate token with full permissions data
+      // Generate token with full permissions data and full enterprise info
+    const fullEnterprise = {
+      enterpriseId: user.enterprise?.enterpriseId || '',
+      companyName: user.enterprise?.companyName || '',
+      logo: user.enterprise?.logo || '',
+      address: user.enterprise?.address || '',
+      mailingAddress: user.enterprise?.mailingAddress || '',
+      city: user.enterprise?.city || '',
+      country: user.enterprise?.country || '',
+      zipCode: user.enterprise?.zipCode || '',
+      phoneNumber: user.enterprise?.phoneNumber || '',
+      companyEmail: user.enterprise?.companyEmail || '',
+      loginLink: user.enterprise?.loginLink || '',
+      industry: user.enterprise?.industry || '',
+      businessType: user.enterprise?.businessType || ''
+    };
     const token = jwt.sign(
-      { 
-        id: user._id, 
-        email: user.email, 
+      {
+        id: user._id,
+        email: user.email,
         role: user.role,
         permissions: user.permissions || {},
-        enterprise: user.enterprise || null
+        profile: user.profile,
+        enterprise: fullEnterprise
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -806,6 +822,7 @@ app.post('/login', async (req, res) => {
           role: user.role,
           profile: user.profile,
           permissions: user.permissions || {},
+          enterprise: fullEnterprise,
           subdomain: user.subdomain
         }
       });
@@ -844,14 +861,30 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
   
-    // Generate token with full permissions data
+    // Generate token with full permissions data and full enterprise info
+    const fullEnterprise = {
+      enterpriseId: user.enterprise?.enterpriseId || '',
+      companyName: user.enterprise?.companyName || '',
+      logo: user.enterprise?.logo || '',
+      address: user.enterprise?.address || '',
+      mailingAddress: user.enterprise?.mailingAddress || '',
+      city: user.enterprise?.city || '',
+      country: user.enterprise?.country || '',
+      zipCode: user.enterprise?.zipCode || '',
+      phoneNumber: user.enterprise?.phoneNumber || '',
+      companyEmail: user.enterprise?.companyEmail || '',
+      loginLink: user.enterprise?.loginLink || '',
+      industry: user.enterprise?.industry || '',
+      businessType: user.enterprise?.businessType || ''
+    };
     const token = jwt.sign(
-      { 
-        id: user._id, 
-        email: user.email, 
+      {
+        id: user._id,
+        email: user.email,
         role: user.role,
         permissions: user.permissions || {},
-        enterprise: user.enterprise || null
+        profile: user.profile,
+        enterprise: fullEnterprise
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -867,6 +900,7 @@ app.post('/login', async (req, res) => {
         role: user.role,
         profile: user.profile,
         permissions: user.permissions || {},
+        enterprise: fullEnterprise,
         subdomain: user.subdomain
       }
     });

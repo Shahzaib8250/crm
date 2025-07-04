@@ -37,11 +37,28 @@ router.post('/register', async (req, res) => {
     await user.save();
 
     // Create JWT token
+    // Ensure all enterprise fields are present in the payload
+    const fullEnterprise = {
+      companyName: user.enterprise?.companyName || '',
+      logo: user.enterprise?.logo || '',
+      address: user.enterprise?.address || '',
+      mailingAddress: user.enterprise?.mailingAddress || '',
+      city: user.enterprise?.city || '',
+      country: user.enterprise?.country || '',
+      zipCode: user.enterprise?.zipCode || '',
+      phoneNumber: user.enterprise?.phoneNumber || '',
+      companyEmail: user.enterprise?.companyEmail || '',
+      loginLink: user.enterprise?.loginLink || '',
+      industry: user.enterprise?.industry || '',
+      businessType: user.enterprise?.businessType || ''
+    };
     const payload = {
       user: {
         id: user.id,
+        email: user.email,
         role: user.role,
-        enterprise: user.enterprise || null
+        profile: user.profile,
+        enterprise: fullEnterprise
       }
     };
 
@@ -51,7 +68,13 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
-        res.json({ token });
+        res.json({ token, user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          profile: user.profile,
+          enterprise: fullEnterprise
+        }});
       }
     );
   } catch (error) {
@@ -80,11 +103,28 @@ router.post('/login', async (req, res) => {
     }
 
     // Create JWT token
+    // Ensure all enterprise fields are present in the payload
+    const fullEnterprise = {
+      companyName: user.enterprise?.companyName || '',
+      logo: user.enterprise?.logo || '',
+      address: user.enterprise?.address || '',
+      mailingAddress: user.enterprise?.mailingAddress || '',
+      city: user.enterprise?.city || '',
+      country: user.enterprise?.country || '',
+      zipCode: user.enterprise?.zipCode || '',
+      phoneNumber: user.enterprise?.phoneNumber || '',
+      companyEmail: user.enterprise?.companyEmail || '',
+      loginLink: user.enterprise?.loginLink || '',
+      industry: user.enterprise?.industry || '',
+      businessType: user.enterprise?.businessType || ''
+    };
     const payload = {
       user: {
         id: user.id,
+        email: user.email,
         role: user.role,
-        enterprise: user.enterprise || null
+        profile: user.profile,
+        enterprise: fullEnterprise
       }
     };
 
@@ -99,7 +139,7 @@ router.post('/login', async (req, res) => {
           email: user.email,
           role: user.role,
           profile: user.profile,
-          enterprise: user.enterprise
+          enterprise: fullEnterprise
         }});
       }
     );
