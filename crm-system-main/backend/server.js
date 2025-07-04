@@ -2573,3 +2573,11 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// testing changes
+console.log('restarted the server after changes');
+
+app.use((req, res) => {
+  console.log('UNMATCHED APP ROUTE:', req.originalUrl);
+  res.status(404).json({ message: 'Not found', path: req.originalUrl });
+});

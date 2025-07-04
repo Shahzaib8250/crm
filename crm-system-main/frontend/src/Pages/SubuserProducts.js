@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './UserDashboard.css';
-import { fetchProducts } from '../services/api';
+import { fetchEnterpriseProducts } from '../services/api';
 
 const getProductIcon = (name) => {
   switch ((name || '').toLowerCase()) {
@@ -17,6 +17,7 @@ const getProductIcon = (name) => {
 
 const SubuserProducts = () => {
   const [products, setProducts] = useState([]);
+  const [userProductIds, setUserProductIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -28,8 +29,19 @@ const SubuserProducts = () => {
       setLoading(true);
       setError('');
       try {
-        const response = await fetchProducts();
+        // Fetch all enterprise products
+        const response = await fetchEnterpriseProducts();
         setProducts(response.data || []);
+        // Get user product access from localStorage (user object)
+        const userStr = localStorage.getItem('user');
+        let userProductIds = [];
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            userProductIds = (user.productAccess || []).filter(pa => pa.hasAccess).map(pa => pa.productId);
+          } catch {}
+        }
+        setUserProductIds(userProductIds);
       } catch (err) {
         setError('Failed to load products');
       } finally {
@@ -48,10 +60,16 @@ const SubuserProducts = () => {
     setSelectedProduct(null);
   };
   const handleProductClick = (product) => {
-    if ((product.name || '').toLowerCase().includes('crm')) {
-      navigate('/crm');
+    // Only allow access if user has access to this product
+    if (userProductIds.includes(product.productId)) {
+      if ((product.name || '').toLowerCase().includes('crm')) {
+        navigate('/crm');
+      } else {
+        handleOpenModal(product);
+      }
     } else {
-      handleOpenModal(product);
+      setError("You don't have access to this product");
+      setTimeout(() => setError(''), 3000);
     }
   };
 

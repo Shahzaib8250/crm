@@ -128,3 +128,8 @@ export const getCurrentUserProfile = async (userId) => {
 export const updateCurrentUserProfile = async (userId, profileData) => {
   return authAxios().put(`/api/users/${userId}`, profileData);
 };
+
+// Fetch products accessible to the user's enterprise
+export const fetchEnterpriseProducts = async () => {
+  return authAxios().get('/api/products/enterprise');
+};

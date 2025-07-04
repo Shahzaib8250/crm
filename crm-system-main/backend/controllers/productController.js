@@ -705,6 +705,45 @@ const deleteCrmProduct = async (req, res) => {
   }
 };
 
+// Get all products accessible to the user's enterprise
+const getEnterpriseProducts = async (req, res) => {
+  try {
+    console.log('getEnterpriseProducts called for user:', req.user && req.user.email, 'enterpriseId:', req.user && req.user.enterprise && req.user.enterprise.enterpriseId);
+    const user = req.user;
+    const enterpriseId = user.enterprise?.enterpriseId;
+    if (!enterpriseId) {
+      console.log('No enterpriseId found for user');
+      return res.json([]);
+    }
+    // Find all users/admins in the same enterprise
+    const users = await User.find({ 'enterprise.enterpriseId': enterpriseId });
+    // Aggregate all productIds with hasAccess: true
+    const productIds = new Set();
+    users.forEach(u => {
+      (u.productAccess || []).forEach(pa => {
+        if (pa.hasAccess) productIds.add(pa.productId);
+      });
+    });
+    if (productIds.size === 0) {
+      return res.json([]);
+    }
+    // Fetch products by productId
+    const products = await Product.find({ productId: { $in: Array.from(productIds) }, active: true });
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const formattedProducts = products.map(product => {
+      const accessUrl = `${baseUrl}/products/access/${product.accessLink}`;
+      return {
+        ...product.toObject(),
+        accessUrl
+      };
+    });
+    res.json(formattedProducts);
+  } catch (error) {
+    console.error('Error in getEnterpriseProducts:', error);
+    res.status(500).json({ message: 'Failed to fetch enterprise products', error: error.message });
+  }
+};
+
 module.exports = {
   createProduct,
   getAllProducts,
@@ -721,5 +760,6 @@ module.exports = {
   getCrmProducts,
   getCrmProductById,
   updateCrmProduct,
-  deleteCrmProduct
+  deleteCrmProduct,
+  getEnterpriseProducts
 };

@@ -11,17 +11,27 @@ const authenticateToken = async (req, res, next) => {
     return res.sendStatus(401);
   }
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
-    console.log('[AUTH] Decoded JWT:', decoded);
-    // Fetch the full user from the database
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      console.log('[AUTH] No user found for decoded id:', decoded.id, 'returning 403');
-      return res.sendStatus(403);
-    }
-    console.log('[AUTH] User found:', user.email, user.role, user.enterprise);
-    req.user = user;
-    next();
+    jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret', async (err, decoded) => {
+      if (err) {
+        console.error('JWT verification error:', err);
+        return res.status(403).json({ message: 'Invalid or expired token', error: err.message });
+      }
+      try {
+        // Fetch the full user from the database
+        const user = await User.findById(decoded.id);
+        console.log('Decoded JWT:', decoded);
+        if (!user) {
+          console.log('No user found for decoded id:', decoded.id);
+          return res.status(403).json({ message: 'User not found' });
+        }
+        console.log('Authenticated user in middleware:', user);
+        req.user = user;
+        next();
+      } catch (dbErr) {
+        console.error('Error fetching user from DB:', dbErr);
+        return res.status(500).json({ message: 'Server error', error: dbErr.message });
+      }
+    });
   } catch (err) {
     console.log('[AUTH] JWT verification error:', err, 'returning 403');
     return res.sendStatus(403);

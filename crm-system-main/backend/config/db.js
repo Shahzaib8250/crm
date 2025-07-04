@@ -21,5 +21,5 @@ const connectDB = async () => {
 
 // For production, set MONGO_URI in a .env file and do not hardcode credentials.
 // Example:
-// MONGO_URI=mongodb+srv://instructorali123:FHocLnh0jO59jsg8@cluster0.xus1zye.mongodb.net/crm-system?retryWrites=true&w=majority&appName=Cluster0
+// MONGO_URI=mongodb+srv://instructorali123:ZLrhaYQgc6Ync@cluster0.xus1zye.mongodb.net/crm-system?retryWrites=true&w=majority&appName=Cluster0
 module.exports = connectDB;

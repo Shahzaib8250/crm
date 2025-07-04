@@ -166,7 +166,12 @@ router.put('/admins/:id', authenticateToken, authorizeRole('superadmin'), async 
     // Ensure permissions object exists and is properly structured
     if (updateData.permissions) {
       updateData.permissions = {
-        crmAccess: Boolean(updateData.permissions.crmAccess)
+        crmAccess: Boolean(updateData.permissions.crmAccess),
+        hrmAccess: Boolean(updateData.permissions.hrmAccess),
+        jobPortalAccess: Boolean(updateData.permissions.jobPortalAccess),
+        jobBoardAccess: Boolean(updateData.permissions.jobBoardAccess),
+        projectManagementAccess: Boolean(updateData.permissions.projectManagementAccess),
+        users: updateData.permissions.users || { add: false }
       };
     }
     
@@ -176,60 +181,33 @@ router.put('/admins/:id', authenticateToken, authorizeRole('superadmin'), async 
     }
 
     // Handle product access updates
-    if (updateData.productAccessUpdate) {
-      // Get current admin to access current product access data
-      const currentAdmin = await User.findById(id);
+    if (updateData.productAccess) {
+      console.log('Updating product access:', updateData.productAccess);
       
-      if (!currentAdmin) {
-        return res.status(404).json({ message: 'Admin not found' });
+      // Ensure each product access item has the required fields
+      const processedProductAccess = updateData.productAccess.map(item => ({
+        productId: item.productId,
+        hasAccess: item.hasAccess !== undefined ? item.hasAccess : true,
+        grantedAt: item.grantedAt || new Date(),
+        accessCount: item.accessCount || 0,
+        usageSummary: item.usageSummary || {
+          dailyActiveUsers: 0,
+          monthlyActiveUsers: 0,
+          totalActions: 0
+        },
+        updatedAt: new Date()
+      }));
+      
+      updateData.productAccess = processedProductAccess;
+      
+      // Update permissions based on product access
+      if (updateData.permissions) {
+        updateData.permissions.crmAccess = processedProductAccess.some(p => p.productId === 'crm' && p.hasAccess);
+        updateData.permissions.hrmAccess = processedProductAccess.some(p => p.productId === 'hrm' && p.hasAccess);
+        updateData.permissions.jobPortalAccess = processedProductAccess.some(p => p.productId === 'job-portal' && p.hasAccess);
+        updateData.permissions.jobBoardAccess = processedProductAccess.some(p => p.productId === 'job-board' && p.hasAccess);
+        updateData.permissions.projectManagementAccess = processedProductAccess.some(p => p.productId === 'project-management' && p.hasAccess);
       }
-      
-      let currentProductAccess = currentAdmin.productAccess || [];
-      
-      // Handle adding a product
-      if (updateData.productAccessUpdate.add) {
-        const { productId } = updateData.productAccessUpdate.add;
-        
-        // Check if product already exists in access list
-        const existingProductIndex = currentProductAccess.findIndex(p => p.productId === productId);
-        
-        if (existingProductIndex >= 0) {
-          // Update existing access with current date
-          currentProductAccess[existingProductIndex].updatedAt = new Date();
-        } else {
-          // Add new product access
-          currentProductAccess.push({
-            productId,
-            grantedAt: new Date()
-          });
-        }
-        
-        // If it's CRM, also update permissions
-        if (productId === 'crm') {
-          updateData.permissions = updateData.permissions || {};
-          updateData.permissions.crmAccess = true;
-        }
-      }
-      
-      // Handle removing a product
-      if (updateData.productAccessUpdate.remove) {
-        const { productId } = updateData.productAccessUpdate.remove;
-        
-        // Remove product from access list
-        currentProductAccess = currentProductAccess.filter(p => p.productId !== productId);
-        
-        // If it's CRM, also update permissions
-        if (productId === 'crm') {
-          updateData.permissions = updateData.permissions || {};
-          updateData.permissions.crmAccess = false;
-        }
-      }
-      
-      // Set the updated product access
-      updateData.productAccess = currentProductAccess;
-      
-      // Delete the productAccessUpdate field as it's not part of the model
-      delete updateData.productAccessUpdate;
     }
     
     const admin = await User.findByIdAndUpdate(

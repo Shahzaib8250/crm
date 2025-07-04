@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // TODO: Fill in your Atlas connection string below:
-const MONGO_URI = 'mongodb+srv://instructorali123:FHocLnh0jO59jsg8@cluster0.xus1zye.mongodb.net/crm-system?retryWrites=true&w=majority&appName=Cluster0'; // <-- Updated URI
+const MONGO_URI = 'mongodb+srv://instructorali123:ZLrhaYQgc6Ync@cluster0.xus1zye.mongodb.net/crm-system?retryWrites=true&w=majority&appName=Cluster0'; // <-- Updated URI
 
 // TODO: Fill in your admin email and company name below:
 const ADMIN_EMAIL = 'tech@example.com'; // <-- Use this email exactly!

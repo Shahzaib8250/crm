@@ -4,9 +4,31 @@ const productController = require('../controllers/productController');
 const { authenticateToken, authorizeRole } = require('../middleware/authMiddleware');
 const { checkPermission } = require('../middleware/roleMiddleware');
 
+router.use((req, res, next) => {
+  console.log('Product route hit:', req.originalUrl);
+  next();
+});
+
 // Product CRUD operations - SuperAdmin only
 router.post('/products', authenticateToken, authorizeRole('superadmin'), productController.createProduct);
 router.get('/products/admin', authenticateToken, authorizeRole('superadmin'), productController.getAllProducts);
+
+// Enterprise-level products (all products accessible to the user's enterprise)
+router.get('/products/test', (req, res) => {
+  console.log('Test route hit!');
+  res.json({ message: 'Test route working' });
+});
+
+router.get('/products/enterprise', authenticateToken, (req, res, next) => {
+  console.log('About to call getEnterpriseProducts controller');
+  try {
+    productController.getEnterpriseProducts(req, res, next);
+  } catch (error) {
+    console.error('Error calling getEnterpriseProducts:', error);
+    res.status(500).json({ message: 'Controller error', error: error.message });
+  }
+});
+
 router.get('/products/:id', authenticateToken, authorizeRole('superadmin'), productController.getProductById);
 router.put('/products/:id', authenticateToken, authorizeRole('superadmin'), productController.updateProduct);
 router.delete('/products/:id', authenticateToken, authorizeRole('superadmin'), productController.deleteProduct);
