@@ -153,13 +153,38 @@ router.put('/admins/:id', authenticateToken, authorizeRole('superadmin'), async 
 
     // Check if enterpriseId is being updated and if it already exists
     if (updateData.enterprise?.enterpriseId) {
-      const existingEnterprise = await User.findOne({ 
-        'enterprise.enterpriseId': updateData.enterprise.enterpriseId, 
-        _id: { $ne: id } 
+      console.log('Checking enterprise ID:', updateData.enterprise.enterpriseId, 'for admin:', id);
+      
+      // Get current admin to check if enterpriseId is actually being changed
+      const currentAdmin = await User.findById(id);
+      if (!currentAdmin) {
+        return res.status(404).json({ message: 'Admin not found' });
+      }
+      
+      const currentEnterpriseId = currentAdmin.enterprise?.enterpriseId;
+      const newEnterpriseId = updateData.enterprise.enterpriseId;
+      
+      console.log('Enterprise ID comparison:', {
+        current: currentEnterpriseId,
+        new: newEnterpriseId,
+        isChanging: currentEnterpriseId !== newEnterpriseId
       });
       
-      if (existingEnterprise) {
-        return res.status(400).json({ message: 'Enterprise ID already exists' });
+      // Only validate if the enterprise ID is actually being changed
+      if (currentEnterpriseId !== newEnterpriseId) {
+        const existingEnterprise = await User.findOne({ 
+          'enterprise.enterpriseId': newEnterpriseId, 
+          _id: { $ne: id } 
+        });
+        
+        if (existingEnterprise) {
+          console.log('Enterprise ID conflict found:', {
+            requestedId: newEnterpriseId,
+            existingAdmin: existingEnterprise._id,
+            existingEmail: existingEnterprise.email
+          });
+          return res.status(400).json({ message: 'Enterprise ID already exists' });
+        }
       }
     }
     
@@ -208,6 +233,90 @@ router.put('/admins/:id', authenticateToken, authorizeRole('superadmin'), async 
         updateData.permissions.jobBoardAccess = processedProductAccess.some(p => p.productId === 'job-board' && p.hasAccess);
         updateData.permissions.projectManagementAccess = processedProductAccess.some(p => p.productId === 'project-management' && p.hasAccess);
       }
+    } else if (updateData.permissions) {
+      // If permissions are being updated but no productAccess array, sync productAccess with permissions
+      console.log('Syncing product access with permissions:', updateData.permissions);
+      
+      // Get current admin to access current product access data
+      const currentAdmin = await User.findById(id);
+      if (!currentAdmin) {
+        return res.status(404).json({ message: 'Admin not found' });
+      }
+      
+      let currentProductAccess = currentAdmin.productAccess || [];
+      
+      // Handle CRM access
+      if (updateData.permissions.crmAccess && !currentProductAccess.some(p => p.productId === 'crm')) {
+        currentProductAccess.push({
+          productId: 'crm',
+          hasAccess: true,
+          grantedAt: new Date(),
+          accessCount: 0,
+          usageSummary: { dailyActiveUsers: 0, monthlyActiveUsers: 0, totalActions: 0 },
+          updatedAt: new Date()
+        });
+      } else if (!updateData.permissions.crmAccess) {
+        currentProductAccess = currentProductAccess.filter(p => p.productId !== 'crm');
+      }
+      
+      // Handle HRM access
+      if (updateData.permissions.hrmAccess && !currentProductAccess.some(p => p.productId === 'hrm')) {
+        currentProductAccess.push({
+          productId: 'hrm',
+          hasAccess: true,
+          grantedAt: new Date(),
+          accessCount: 0,
+          usageSummary: { dailyActiveUsers: 0, monthlyActiveUsers: 0, totalActions: 0 },
+          updatedAt: new Date()
+        });
+      } else if (!updateData.permissions.hrmAccess) {
+        currentProductAccess = currentProductAccess.filter(p => p.productId !== 'hrm');
+      }
+      
+      // Handle Job Portal access
+      if (updateData.permissions.jobPortalAccess && !currentProductAccess.some(p => p.productId === 'job-portal')) {
+        currentProductAccess.push({
+          productId: 'job-portal',
+          hasAccess: true,
+          grantedAt: new Date(),
+          accessCount: 0,
+          usageSummary: { dailyActiveUsers: 0, monthlyActiveUsers: 0, totalActions: 0 },
+          updatedAt: new Date()
+        });
+      } else if (!updateData.permissions.jobPortalAccess) {
+        currentProductAccess = currentProductAccess.filter(p => p.productId !== 'job-portal');
+      }
+      
+      // Handle Job Board access
+      if (updateData.permissions.jobBoardAccess && !currentProductAccess.some(p => p.productId === 'job-board')) {
+        currentProductAccess.push({
+          productId: 'job-board',
+          hasAccess: true,
+          grantedAt: new Date(),
+          accessCount: 0,
+          usageSummary: { dailyActiveUsers: 0, monthlyActiveUsers: 0, totalActions: 0 },
+          updatedAt: new Date()
+        });
+      } else if (!updateData.permissions.jobBoardAccess) {
+        currentProductAccess = currentProductAccess.filter(p => p.productId !== 'job-board');
+      }
+      
+      // Handle Project Management access
+      if (updateData.permissions.projectManagementAccess && !currentProductAccess.some(p => p.productId === 'project-management')) {
+        currentProductAccess.push({
+          productId: 'project-management',
+          hasAccess: true,
+          grantedAt: new Date(),
+          accessCount: 0,
+          usageSummary: { dailyActiveUsers: 0, monthlyActiveUsers: 0, totalActions: 0 },
+          updatedAt: new Date()
+        });
+      } else if (!updateData.permissions.projectManagementAccess) {
+        currentProductAccess = currentProductAccess.filter(p => p.productId !== 'project-management');
+      }
+      
+      updateData.productAccess = currentProductAccess;
+      console.log('Updated product access based on permissions:', currentProductAccess.map(p => p.productId));
     }
     
     const admin = await User.findByIdAndUpdate(
@@ -231,13 +340,15 @@ router.put('/admins/:id', authenticateToken, authorizeRole('superadmin'), async 
     res.json({
       message: 'Admin updated successfully',
       admin: {
-        id: admin._id,
+        _id: admin._id,
         email: admin.email,
         role: admin.role,
         profile: admin.profile,
         permissions: admin.permissions,
         enterprise: admin.enterprise,
-        productAccess: admin.productAccess
+        productAccess: admin.productAccess,
+        createdAt: admin.createdAt,
+        updatedAt: admin.updatedAt
       }
     });
   } catch (error) {
@@ -299,7 +410,7 @@ router.put('/admins/:id/toggle-crm-access', authenticateToken, authorizeRole('su
       success: true,
       message: `CRM access ${accessValue ? 'granted' : 'revoked'} successfully`,
       admin: {
-        id: admin._id,
+        _id: admin._id,
         email: admin.email,
         role: admin.role,
         permissions: admin.permissions,
@@ -395,7 +506,7 @@ router.put('/admins/:id/products/:productId/grant', authenticateToken, authorize
       success: true,
       message: `Access to ${productId} granted successfully`,
       admin: {
-        id: admin._id,
+        _id: admin._id,
         email: admin.email,
         role: admin.role,
         permissions: admin.permissions,
@@ -464,7 +575,7 @@ router.put('/admins/:id/products/:productId/revoke', authenticateToken, authoriz
       success: true,
       message: `Access to ${productId} revoked successfully`,
       admin: {
-        id: admin._id,
+        _id: admin._id,
         email: admin.email,
         role: admin.role,
         permissions: admin.permissions,
@@ -542,7 +653,7 @@ router.put('/admins/:id/products/:productId/regenerate', authenticateToken, auth
       success: true,
       message: `Access link for ${productId} regenerated successfully`,
       admin: {
-        id: admin._id,
+        _id: admin._id,
         email: admin.email,
         role: admin.role,
         permissions: admin.permissions,

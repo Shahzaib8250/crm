@@ -1230,12 +1230,12 @@ const SuperAdminDashboard = () => {
             </div>
             <div className="form-group">
               <label>Join Date</label>
-              <input 
-                type="date" 
-                className="form-control"
-                value={profile.joinDate} 
-                onChange={(e) => setProfile({...profile, joinDate: e.target.value})} 
-              />
+                              <input 
+                  type="date" 
+                  className="form-control"
+                  value={profile.joinDate ? profile.joinDate.split('T')[0] : ''} 
+                  onChange={(e) => setProfile({...profile, joinDate: e.target.value})} 
+                />
             </div>
           </div>
 
@@ -1720,8 +1720,8 @@ const SuperAdminDashboard = () => {
         email: email,
         profile: profile,
         enterprise: enterprise,
-        permissions: { ...permissions },
-        productAccess: productAccess
+        permissions: { ...permissions }
+        // Remove productAccess - let backend sync based on permissions
       };
       
       // Only include password if it was provided
@@ -1745,12 +1745,16 @@ const SuperAdminDashboard = () => {
       );
       
       console.log('Enterprise updated:', response.data);
+      console.log('Response admin data:', response.data.admin);
+      console.log('Current admins before update:', admins);
       
       if (response.data.admin) {
         // Update the admins list
-        setAdmins(admins.map(admin => 
+        const updatedAdmins = admins.map(admin => 
           admin._id === enterpriseId ? response.data.admin : admin
-        ));
+        );
+        console.log('Updated admins list:', updatedAdmins);
+        setAdmins(updatedAdmins);
         
         // Close dialog and reset form
         setOpenDialog(false);
@@ -2796,7 +2800,7 @@ const SuperAdminDashboard = () => {
                             ].filter(Boolean).join(', ') || 'Not set'}</p>
                             <p><strong>Industry:</strong> {admin.enterprise?.industry || 'Not set'}</p>
                             <p><strong>Business Type:</strong> {admin.enterprise?.businessType || 'Not set'}</p>
-                            <p><strong>Created:</strong> {new Date(admin.createdAt).toLocaleDateString()}</p>
+                            <p><strong>Created:</strong> {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : 'Not set'}</p>
                           </div>
                         </div>
                         
