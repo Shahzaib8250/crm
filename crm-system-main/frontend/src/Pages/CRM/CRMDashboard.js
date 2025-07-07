@@ -1,21 +1,49 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, NavLink, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../Components/Layout/AdminSidebar';
 import ThemeToggle from '../../Components/ThemeToggle';
 import axios from 'axios';
 import './CRM.css';
 import { useNotification } from '../../utils/NotificationContext';
-import ServiceManagement from './ServiceManagement';
-import ProductManagement from './ProductManagement';
-import LeadManagement from './LeadManagement';
-import UserRoleManagement from './UserRoleManagement';
-import AuditLog from './AuditLog';
+
+const moduleBlocks = [
+  [
+    { label: 'Products', route: 'products', icon: '📦' },
+    { label: 'Services', route: 'services', icon: '🛠️' },
+  ],
+  [
+    { label: 'Quotations', route: 'quotations', icon: '💼' },
+    { label: 'Invoices', route: 'invoices', icon: '🧾' },
+  ],
+  [
+    { label: 'Reports & Analytics', route: 'reports', icon: '📊' },
+    { label: 'Complaints/Help', route: 'complaints', icon: '❓' },
+  ],
+  [
+    { label: 'Customers', route: 'customers', icon: '👥' },
+    { label: 'Sales', route: 'sales', icon: '💰' },
+  ],
+];
+
+const sidebarLinks = [
+  { label: 'Dashboard', route: '.', icon: '🏠' },
+  { label: 'Products', route: 'products', icon: '📦' },
+  { label: 'Services', route: 'services', icon: '🛠️' },
+  { label: 'Leads', route: 'leads', icon: '📋' },
+  { label: 'Quotations', route: 'quotations', icon: '💼' },
+  { label: 'Invoices', route: 'invoices', icon: '🧾' },
+  { label: 'Reports', route: 'reports', icon: '📊' },
+  { label: 'Create Ticket', route: 'create-ticket', icon: '🎫' },
+  { label: 'Users', route: 'users', icon: '👤' },
+  { label: 'Customers', route: 'customers', icon: '👥' },
+  { label: 'Sales', route: 'sales', icon: '💰' },
+];
 
 const CRMDashboard = () => {
   const [branding, setBranding] = useState({ logo: '', companyName: '', colors: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const { notifications } = useNotification();
 
@@ -36,7 +64,6 @@ const CRMDashboard = () => {
     fetchBranding();
   }, []);
 
-  // Apply branding colors to document root
   useEffect(() => {
     if (branding.colors) {
       Object.entries(branding.colors).forEach(([key, value]) => {
@@ -52,86 +79,91 @@ const CRMDashboard = () => {
   const isDashboardRoot = window.location.pathname.endsWith('/crm') || window.location.pathname.endsWith('/crm/');
 
   return (
-    <div className="crm-dashboard-root">
-      <aside className={`crm-sidebar${showSidebar ? '' : ' collapsed'}`}>
-        <div className="crm-branding">
-          {branding.logo && <img src={branding.logo} alt="Logo" className="crm-logo" />}
-          <span className="crm-company-name">{branding.companyName}</span>
+    <div className="crm-pro-root">
+      {/* Header */}
+      <header className="crm-pro-header">
+        <div className="crm-pro-header-left">
+          {branding.logo ? (
+            <img src={branding.logo} alt="Logo" className="crm-pro-logo" />
+          ) : (
+            <span className="crm-pro-logo-placeholder">🌀</span>
+          )}
+          <span className="crm-pro-company">{branding.companyName || 'Enterprise Name'}</span>
         </div>
-        <nav className="crm-nav">
-          <NavLink to="." end className={({ isActive }) => isActive ? 'active' : ''}>Dashboard</NavLink>
-          <NavLink to="products" className={({ isActive }) => isActive ? 'active' : ''}>Products</NavLink>
-          <NavLink to="services" className={({ isActive }) => isActive ? 'active' : ''}>Services</NavLink>
-          <NavLink to="leads" className={({ isActive }) => isActive ? 'active' : ''}>Leads</NavLink>
-          <NavLink to="users" className={({ isActive }) => isActive ? 'active' : ''}>Users & Roles</NavLink>
-          <NavLink to="audit-logs" className={({ isActive }) => isActive ? 'active' : ''}>Audit Logs</NavLink>
-        </nav>
-        <ThemeToggle />
-      </aside>
-      <main className="crm-main-content">
-        {/* In-app notifications */}
-        <div className="crm-notifications">
-          {notifications.map((n) => (
-            <div key={n.id} className={`crm-notification ${n.type}`}>{n.message}</div>
-          ))}
+        <div className="crm-pro-header-center">CRM Dashboard</div>
+        <div className="crm-pro-header-right">
+          <ThemeToggle />
+          <span className="crm-pro-header-bell" title="Notifications">🔔</span>
+          <span className="crm-pro-header-profile" title="Profile">👤</span>
         </div>
-        {/* Topbar */}
-        <header className="crm-topbar">
-          <button className="sidebar-toggle" onClick={() => setShowSidebar(s => !s)}>
-            {showSidebar ? '☰' : '☰'}
+      </header>
+      <div className="crm-pro-main">
+        {/* Sidebar */}
+        <aside className={`crm-pro-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}>  
+          <button className="crm-pro-sidebar-toggle" onClick={() => setSidebarCollapsed(v => !v)} title="Toggle Sidebar">
+            {sidebarCollapsed ? '➡️' : '⬅️'}
           </button>
-          <span className="crm-dashboard-title">CRM Dashboard</span>
-          <button
-            className="logout-btn"
-            style={{ marginLeft: 'auto', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 600, cursor: 'pointer', fontSize: '1rem' }}
-            onClick={() => {
-              localStorage.clear();
-              navigate('/login');
-            }}
-          >
-            Logout
-          </button>
-        </header>
-        {/* Dashboard landing stats */}
-        {isDashboardRoot && (
-          <section className="crm-dashboard-stats-section animate-fade-in">
-            <div className="crm-dashboard-stats-grid">
-              <div className="crm-stat-card">
-                <div className="crm-stat-icon customers">👥</div>
-                <div className="crm-stat-label">Total Customers</div>
-                <div className="crm-stat-value">1,234</div>
-              </div>
-              <div className="crm-stat-card">
-                <div className="crm-stat-icon leads">📈</div>
-                <div className="crm-stat-label">Active Leads</div>
-                <div className="crm-stat-value">87</div>
-              </div>
-              <div className="crm-stat-card">
-                <div className="crm-stat-icon products">🛒</div>
-                <div className="crm-stat-label">Products</div>
-                <div className="crm-stat-value">12</div>
-              </div>
-              <div className="crm-stat-card">
-                <div className="crm-stat-icon users">👤</div>
-                <div className="crm-stat-label">Users</div>
-                <div className="crm-stat-value">8</div>
-              </div>
+          <nav>
+            {sidebarLinks.map(link => (
+              <NavLink
+                key={link.label}
+                to={link.route}
+                className={({ isActive }) => isActive ? 'crm-pro-sidebar-link active' : 'crm-pro-sidebar-link'}
+                end={link.route === '.'}
+                title={link.label}
+              >
+                <span className="crm-pro-sidebar-icon">{link.icon}</span>
+                {!sidebarCollapsed && <span>{link.label}</span>}
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+        {/* Main Content */}
+        <main className="crm-pro-content">
+          {isDashboardRoot ? (
+            <div className="crm-pro-grid">
+              {moduleBlocks.map((row, i) => (
+                <div className="crm-pro-row" key={i}>
+                  {row.map(block => (
+                    <div
+                      key={block.label}
+                      className="crm-pro-block"
+                      onClick={() => navigate(block.route)}
+                      tabIndex={0}
+                      role="button"
+                      title={block.label}
+                    >
+                      <span className="crm-pro-block-icon">{block.icon}</span>
+                      <span className="crm-pro-block-label">{block.label}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
-          </section>
-        )}
-        {/* Animated module transitions (placeholder) */}
-        <div className="crm-module-content animate-fade-in">
-          <Routes>
-            <Route path="products" element={<ProductManagement />} />
-            <Route path="services" element={<ServiceManagement />} />
-            <Route path="leads" element={<LeadManagement />} />
-            <Route path="users" element={<UserRoleManagement />} />
-            <Route path="audit-logs" element={<AuditLog />} />
-            <Route index element={isDashboardRoot ? null : <Navigate to="." />} />
-          </Routes>
-          <Outlet />
-        </div>
-      </main>
+          ) : (
+            <Outlet />
+          )}
+        </main>
+        {/* Notifications */}
+        <aside className="crm-pro-notifications">
+          <div className="crm-pro-notifications-title">Notifications</div>
+          <div className="crm-pro-notifications-list">
+            {notifications && notifications.length > 0 ? (
+              notifications.map((n, idx) => (
+                <div className="crm-pro-notification-card" key={idx}>
+                  <span className="crm-pro-notification-icon">🔔</span>
+                  <div className="crm-pro-notification-content">
+                    <div className="crm-pro-notification-msg">{n.message}</div>
+                    <div className="crm-pro-notification-time">{n.time || ''}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="crm-pro-no-notifications">No notifications</div>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 };
