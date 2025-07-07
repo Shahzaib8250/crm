@@ -45,17 +45,13 @@ const Login = () => {
     
     try {
       const response = await axios.post(`${API_URL}/login`, formData);
-      
-      // Store token in localStorage
-      localStorage.setItem('token', response.data.token);
-      
-      // Redirect based on role
+      // Only allow admin login from this form
       if (response.data.role === 'admin') {
+        // Store token in localStorage
+        localStorage.setItem('token', response.data.token);
         navigate('/admin/dashboard');
-      } else if (response.data.role === 'superadmin') {
-        navigate('/superadmin/dashboard');
       } else {
-        navigate('/dashboard');
+        setError('You are not authorized to log in here. Please use the correct login page for your role.');
       }
     } catch (error) {
       setError(error.response?.data?.message || 'Login failed. Please try again.');

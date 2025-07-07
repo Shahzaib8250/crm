@@ -3072,6 +3072,26 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     }
   };
 
+  const handleForwardTicket = async (ticket) => {
+    if (!ticket || ticket.forwardedToSuperAdmin) {
+      showAlert("This ticket has already been forwarded to super admin", 'error');
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/api/tickets/${ticket._id || ticket.id}/forward`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showAlert('Ticket forwarded to super admin successfully', 'success');
+      // Refresh tickets to update the forwarded status
+      fetchTickets();
+    } catch (error) {
+      console.error('Failed to forward ticket:', error);
+      showAlert(error.response?.data?.message || 'Failed to forward ticket', 'error');
+    }
+  };
+
   const CRM_PRODUCT_IDS = ['crm', 'crm-pro', 'PROD-CRM-001'];
 
   const handleViewProduct = (product) => {
@@ -3730,6 +3750,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
           onClose={handleCloseViewModal}
           ticket={selectedTicket}
           userRole="admin" // Explicitly set role for admin dashboard
+          onForwardTicket={handleForwardTicket}
         />
       )}
 

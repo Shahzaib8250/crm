@@ -283,6 +283,133 @@
   color: #28304a;
 }
 
+/* Ticket Detail Modal */
+.ticket-detail-modal {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.ticket-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.ticket-info p {
+  margin: 5px 0;
+}
+
+.ticket-message {
+  margin-bottom: 20px;
+}
+
+.ticket-message h4 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.ticket-responses {
+  margin-top: 20px;
+}
+
+.ticket-responses h4 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.response {
+  background: #f8f9fa;
+  border-left: 4px solid #007bff;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 0 8px 8px 0;
+}
+
+.response.admin {
+  border-left-color: #28a745;
+}
+
+.response.superadmin {
+  border-left-color: #dc3545;
+}
+
+.response-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.response-message {
+  color: #333;
+  line-height: 1.5;
+}
+
+.status-open {
+  color: #007bff;
+  font-weight: bold;
+}
+
+.status-in-progress {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.status-resolved {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.status-closed {
+  color: #6c757d;
+  font-weight: bold;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+.error-message {
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
 @media (max-width: 900px) {
   .subuser-dashboard-root {
     flex-direction: column;

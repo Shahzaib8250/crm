@@ -6,7 +6,7 @@ import websocketService from '../../../services/websocketService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded }) => {
+const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded, onForwardTicket }) => {
   const [newResponse, setNewResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
@@ -164,10 +164,44 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
             <p className={`status ${ticket?.status?.toLowerCase()}`}>{ticket?.status}</p>
           </div>
           <div className="info-group">
-            <label>Description</label>
-            <p>{ticket?.description}</p>
+            <label>Priority</label>
+            <p>{ticket?.priority}</p>
+          </div>
+          <div className="info-group">
+            <label>Category</label>
+            <p>{ticket?.category}</p>
+          </div>
+          <div className="info-group">
+            <label>Submitted By</label>
+            <p>{ticket?.submittedBy?.profile?.fullName || ticket?.name}</p>
+          </div>
+          <div className="info-group">
+            <label>Created</label>
+            <p>{new Date(ticket?.createdAt).toLocaleString()}</p>
+          </div>
+          {ticket?.forwardedToSuperAdmin && (
+            <div className="info-group">
+              <label>Forwarded to Super Admin</label>
+              <p className="forwarded-status">Yes - {new Date(ticket?.forwardedAt).toLocaleString()}</p>
+            </div>
+          )}
+          <div className="info-group">
+            <label>Message</label>
+            <p>{ticket?.message}</p>
           </div>
         </div>
+
+        {/* Forward to Super Admin Button (only for enterprise admins) */}
+        {userRole === 'admin' && !ticket?.forwardedToSuperAdmin && onForwardTicket && (
+          <div className="forward-section">
+            <button 
+              className="forward-btn"
+              onClick={() => onForwardTicket(ticket)}
+            >
+              Forward to Super Admin
+            </button>
+          </div>
+        )}
 
         <div className="responses-section">
           <h3>Conversation</h3>

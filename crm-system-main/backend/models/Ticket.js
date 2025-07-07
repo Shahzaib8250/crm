@@ -11,6 +11,21 @@ const TicketSchema = new Schema({
     ref: 'User',
     required: true
   },
+  enterpriseId: {
+    type: String,
+    required: true
+  },
+  forwardedToSuperAdmin: {
+    type: Boolean,
+    default: false
+  },
+  forwardedAt: {
+    type: Date
+  },
+  forwardedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
   name: {
     type: String,
     required: true

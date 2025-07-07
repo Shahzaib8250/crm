@@ -28,6 +28,13 @@ const upload = multer({
 // Create a new ticket (Both admin and regular users)
 router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
   try {
+    // Debug: Log user info
+    if (!req.user || !req.user.id) {
+      console.error('No authenticated user found in ticket creation');
+      return res.status(401).json({ message: 'Authentication required to create a ticket.' });
+    }
+    console.log('Creating ticket for user ID:', req.user.id);
+
     // Log the incoming request
     console.log('Received ticket creation request:', {
       body: req.body,
@@ -53,13 +60,66 @@ router.post('/', authenticateToken, upload.array('attachments', 5), async (req, 
       mimetype: file.mimetype
     })) : [];
 
-    // For regular users, set adminId to their own ID
+    // Get user's enterprise information
+    const currentUser = await User.findById(req.user.id);
+    if (!currentUser) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    // For regular users, find their enterprise admin
     // For admins, they can specify a different adminId if needed
-    const adminId = req.user.role === 'admin' ? (req.body.adminId || req.user.id) : req.user.id;
+    let adminId;
+    let enterpriseId;
+    
+    if (req.user.role === 'user') {
+      // Check if user has enterprise information
+      if (!currentUser.enterprise || !currentUser.enterprise.enterpriseId) {
+        // Try to find enterprise admin by createdBy field
+        if (currentUser.createdBy) {
+          const creator = await User.findById(currentUser.createdBy);
+          if (creator && creator.enterprise && creator.enterprise.enterpriseId) {
+            enterpriseId = creator.enterprise.enterpriseId;
+            // Find the enterprise admin for this enterprise
+            const enterpriseAdmin = await User.findOne({
+              role: 'admin',
+              'enterprise.enterpriseId': enterpriseId
+            });
+            
+            if (enterpriseAdmin) {
+              adminId = enterpriseAdmin._id;
+            } else {
+              return res.status(400).json({ message: 'No enterprise admin found for this user. Please contact your administrator.' });
+            }
+          } else {
+            return res.status(400).json({ message: 'User enterprise information not found. Please contact your administrator to set up your account properly.' });
+          }
+        } else {
+          return res.status(400).json({ message: 'User enterprise information not found. Please contact your administrator to set up your account properly.' });
+        }
+      } else {
+        enterpriseId = currentUser.enterprise.enterpriseId;
+        // Find the enterprise admin for this user
+        const enterpriseAdmin = await User.findOne({
+          role: 'admin',
+          'enterprise.enterpriseId': enterpriseId
+        });
+        
+        if (!enterpriseAdmin) {
+          return res.status(400).json({ message: 'No enterprise admin found for this user. Please contact your administrator.' });
+        }
+        
+        adminId = enterpriseAdmin._id;
+      }
+    } else {
+      // For admins, use their own ID or specified adminId
+      adminId = req.body.adminId || req.user.id;
+      enterpriseId = currentUser.enterprise?.enterpriseId || '';
+    }
 
     // Create new ticket
     const ticket = new Ticket({
       adminId: adminId,
+      enterpriseId: enterpriseId,
       name: req.body.name,
       email: req.body.email,
       subject: req.body.subject,
@@ -75,7 +135,7 @@ router.post('/', authenticateToken, upload.array('attachments', 5), async (req, 
 
     // Save ticket
     const savedTicket = await ticket.save();
-    console.log('Ticket saved successfully:', savedTicket._id);
+    console.log('Ticket saved successfully:', savedTicket._id, 'submittedBy:', savedTicket.submittedBy);
     
     // Populate user details
     await savedTicket.populate([
@@ -119,15 +179,16 @@ router.post('/', authenticateToken, upload.array('attachments', 5), async (req, 
   }
 });
 
-// Get all tickets (Superadmin only)
+// Get all tickets (Superadmin only) - Only forwarded tickets
 router.get('/', authenticateToken, authorizeRole('superadmin'), async (req, res) => {
   try {
     console.log('GET /api/tickets called by user:', req.user);
-    const tickets = await Ticket.find()
+    const tickets = await Ticket.find({ forwardedToSuperAdmin: true })
       .populate('adminId', 'email profile.fullName')
       .populate('submittedBy', 'email profile.fullName enterprise.companyName')
+      .populate('forwardedBy', 'email profile.fullName enterprise.companyName')
       .sort({ createdAt: -1 });
-    console.log('Tickets found:', tickets.length);
+    console.log('Forwarded tickets found:', tickets.length);
     res.json(tickets);
   } catch (error) {
     console.error('Error fetching tickets:', error);
@@ -135,10 +196,20 @@ router.get('/', authenticateToken, authorizeRole('superadmin'), async (req, res)
   }
 });
 
-// Get tickets for specific admin
+// Get tickets for enterprise admin (tickets assigned to them)
 router.get('/admin', authenticateToken, authorizeRole('admin', 'superadmin'), async (req, res) => {
   try {
     console.log('GET /api/tickets/admin called by user:', req.user);
+    
+    if (req.user.role === 'superadmin') {
+      // Super admin can see all tickets
+      const tickets = await Ticket.find()
+        .populate('submittedBy', 'email profile.fullName enterprise.companyName')
+        .populate('adminId', 'email profile.fullName enterprise.companyName')
+        .sort({ createdAt: -1 });
+      return res.json(tickets);
+    }
+    
     // Get the current admin's enterpriseId
     const currentAdmin = await User.findById(req.user.id);
     if (!currentAdmin || !currentAdmin.enterprise || !currentAdmin.enterprise.enterpriseId) {
@@ -146,20 +217,42 @@ router.get('/admin', authenticateToken, authorizeRole('admin', 'superadmin'), as
     }
     const enterpriseId = currentAdmin.enterprise.enterpriseId;
 
-    // Find all admins with the same enterpriseId
-    const adminsInEnterprise = await User.find({
-      role: 'admin',
-      'enterprise.enterpriseId': enterpriseId
-    }).select('_id');
-    const adminIds = adminsInEnterprise.map(a => a._id);
-
-    // Find tickets for all admins in this enterprise
-    const tickets = await Ticket.find({ adminId: { $in: adminIds } })
+    // Find tickets assigned to this admin or other admins in the same enterprise
+    const tickets = await Ticket.find({ 
+      $or: [
+        { adminId: req.user.id },
+        { enterpriseId: enterpriseId }
+      ]
+    })
       .populate('submittedBy', 'email profile.fullName')
+      .populate('adminId', 'email profile.fullName')
       .sort({ createdAt: -1 });
     res.json(tickets);
   } catch (error) {
     console.error('Error fetching admin tickets:', {
+      user: req.user,
+      error: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get tickets for regular users (tickets they submitted)
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      console.error('No authenticated user found in ticket fetch');
+      return res.status(401).json({ message: 'Authentication required to fetch tickets.' });
+    }
+    console.log('GET /api/tickets/user called by user:', req.user.id);
+    const tickets = await Ticket.find({ submittedBy: req.user.id })
+      .populate('adminId', 'email profile.fullName')
+      .sort({ createdAt: -1 });
+    console.log('Tickets found for user:', req.user.id, 'Count:', tickets.length);
+    res.json(tickets);
+  } catch (error) {
+    console.error('Error fetching user tickets:', {
       user: req.user,
       error: error.message,
       stack: error.stack
@@ -415,6 +508,75 @@ router.delete('/:ticketId/responses/:responseId', authenticateToken, authorizeRo
   }
 });
 
+// Forward ticket to super admin (Enterprise admin only)
+router.post('/:id/forward', authenticateToken, authorizeRole('admin'), async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    // Check if ticket belongs to this admin's enterprise
+    const currentAdmin = await User.findById(req.user.id);
+    if (ticket.enterpriseId !== currentAdmin.enterprise.enterpriseId) {
+      return res.status(403).json({ message: 'You can only forward tickets from your enterprise' });
+    }
+
+    // Update ticket to forward to super admin
+    ticket.forwardedToSuperAdmin = true;
+    ticket.forwardedAt = new Date();
+    ticket.forwardedBy = req.user.id;
+
+    await ticket.save();
+
+    // Populate the ticket with necessary fields for notifications
+    await ticket.populate([
+      { path: 'submittedBy', select: 'email profile.fullName' },
+      { path: 'forwardedBy', select: 'email profile.fullName enterprise.companyName' }
+    ]);
+
+    // Create notification for super admin
+    try {
+      // Find the super admin user to get their actual ID
+      const superAdmin = await User.findOne({ role: 'superadmin' });
+      if (superAdmin) {
+        await notificationController.createNotification({
+          userId: superAdmin._id, // Use actual super admin user ID
+          message: `Ticket ${ticket.ticketNo} forwarded from ${currentAdmin.enterprise.companyName}`,
+          type: 'info',
+          title: 'Ticket Forwarded',
+          relatedTo: { model: 'Ticket', id: ticket._id }
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Failed to create notification for forwarded ticket:', notifyErr);
+    }
+
+    // Emit WebSocket event for ticket forwarding
+    try {
+      websocketService.notifyEnterpriseAdmins('ticket_forwarded', ticket);
+      // Notify super admins about the forwarded ticket
+      websocketService.notifySuperAdmins('ticket_forwarded', ticket);
+      // Notify the ticket submitter about the forwarding
+      if (ticket.submittedBy && ticket.submittedBy._id) {
+        websocketService.notifyUser(ticket.submittedBy._id, 'ticket_forwarded_to_superadmin', ticket);
+      }
+    } catch (wsError) {
+      console.error('WebSocket notification error:', wsError);
+      // Don't fail the request if WebSocket notification fails
+    }
+
+    res.json({ 
+      message: 'Ticket forwarded to super admin successfully',
+      ticket: ticket
+    });
+  } catch (error) {
+    console.error('Error forwarding ticket:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Delete a ticket by ID (Superadmin and Admin can delete)
 router.delete('/:id', authenticateToken, authorizeRole('superadmin', 'admin'), async (req, res) => {
   try {
@@ -440,18 +602,21 @@ router.delete('/:id', authenticateToken, authorizeRole('superadmin', 'admin'), a
 // Get ticket statistics
 router.get('/stats', authenticateToken, authorizeRole('superadmin'), async (req, res) => {
   try {
-    const total = await Ticket.countDocuments();
+    // For super admin, only count forwarded tickets
+    const query = { forwardedToSuperAdmin: true };
+    
+    const total = await Ticket.countDocuments(query);
     const byStatus = {
-      open: await Ticket.countDocuments({ status: 'Open' }),
-      inProgress: await Ticket.countDocuments({ status: 'In Progress' }),
-      resolved: await Ticket.countDocuments({ status: 'Resolved' }),
-      closed: await Ticket.countDocuments({ status: 'Closed' })
+      open: await Ticket.countDocuments({ ...query, status: 'Open' }),
+      inProgress: await Ticket.countDocuments({ ...query, status: 'In Progress' }),
+      resolved: await Ticket.countDocuments({ ...query, status: 'Resolved' }),
+      closed: await Ticket.countDocuments({ ...query, status: 'Closed' })
     };
     const byPriority = {
-      critical: await Ticket.countDocuments({ priority: 'Critical' }),
-      high: await Ticket.countDocuments({ priority: 'High' }),
-      medium: await Ticket.countDocuments({ priority: 'Medium' }),
-      low: await Ticket.countDocuments({ priority: 'Low' })
+      critical: await Ticket.countDocuments({ ...query, priority: 'Critical' }),
+      high: await Ticket.countDocuments({ ...query, priority: 'High' }),
+      medium: await Ticket.countDocuments({ ...query, priority: 'Medium' }),
+      low: await Ticket.countDocuments({ ...query, priority: 'Low' })
     };
 
     res.json({
