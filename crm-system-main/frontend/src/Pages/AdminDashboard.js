@@ -157,6 +157,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const [roles, setRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [rolesError, setRolesError] = useState('');
+  // Add state for the two ticket tabs
+  const [ticketTab, setTicketTab] = useState('assigned');
+  const [assignedTickets, setAssignedTickets] = useState([]);
+  const [createdTickets, setCreatedTickets] = useState([]);
 
   // Ref to hold the current ticketsLoading state to prevent stale closures in useCallback
   const ticketsLoadingRef = useRef(ticketsLoading);
@@ -2936,20 +2940,36 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   // Handler for submitting the ticket
   const handleSubmitTicket = async () => {
+    // Validation for required fields
+    const subject = ticketForm.subject?.trim();
+    const category = ticketForm.category?.trim() || 'General';
+    const description = ticketForm.description?.trim();
+    const name = currentUser?.profile?.fullName?.trim() || '';
+    const email = currentUser?.email?.trim() || '';
+    const department = currentUser?.profile?.department?.trim() || 'General';
+
+    if (!subject || !category || !description || !name || !email || !department) {
+      showAlert('Please fill in all required fields (subject, category, description, name, email, department).', 'error');
+      return;
+    }
+
+    const payload = {
+      subject,
+      category,
+      message: description,
+      priority: ticketForm.priority,
+      name,
+      email,
+      department,
+      relatedTo: category
+    };
+    console.log('Submitting ticket with payload:', JSON.stringify(payload, null, 2));
+
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/api/tickets`,
-        {
-          subject: ticketForm.subject,
-          category: ticketForm.category,
-          message: ticketForm.description, // Changed from description to message
-          priority: ticketForm.priority,
-          name: currentUser?.profile?.fullName || '',
-          email: currentUser?.email || '',
-          department: currentUser?.profile?.department || '',
-          relatedTo: ticketForm.category
-        },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       showAlert('Ticket submitted successfully!', 'success');
@@ -2958,7 +2978,22 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       fetchTickets();
     } catch (error) {
       console.error('Failed to submit ticket:', error);
-      showAlert(error.response?.data?.message || 'Failed to submit ticket', 'error');
+      if (error.response) {
+        console.error('Backend error response:', JSON.stringify(error.response.data, null, 2));
+        const details = error.response.data.details;
+        if (details && Array.isArray(details) && details.length > 0) {
+          showAlert(`${error.response.data.message}: ${details.join(', ')}`, 'error');
+        } else {
+          showAlert(
+            error.response.data.message ||
+            JSON.stringify(error.response.data) ||
+            'Failed to submit ticket (see console for details)',
+            'error'
+          );
+        }
+      } else {
+        showAlert(error.message || 'Failed to submit ticket', 'error');
+      }
     }
   };
 
@@ -3177,6 +3212,95 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
         .finally(() => setRolesLoading(false));
     }
   }, [openDialog]);
+
+  // Fetch assigned tickets (from users)
+  const fetchAssignedTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    setTicketsError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/tickets/admin/assigned`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAssignedTickets(response.data);
+    } catch (error) {
+      setTicketsError('Failed to fetch assigned tickets');
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  // Fetch created tickets (to superadmin)
+  const fetchCreatedTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    setTicketsError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/tickets/admin/created`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCreatedTickets(response.data);
+    } catch (error) {
+      setTicketsError('Failed to fetch created tickets');
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  // Fetch both ticket lists on mount or when switching tabs
+  useEffect(() => {
+    if (activeTab === 'tickets') {
+      fetchAssignedTickets();
+      fetchCreatedTickets();
+    }
+  }, [activeTab, fetchAssignedTickets, fetchCreatedTickets]);
+
+  // Ticket tab UI and rendering
+  function renderTicketsSection() {
+    return (
+      <div className="admin-tickets-section">
+        <div className="ticket-tabs">
+          <button
+            className={ticketTab === 'assigned' ? 'active' : ''}
+            onClick={() => setTicketTab('assigned')}
+          >
+            Tickets Assigned to Me
+          </button>
+          <button
+            className={ticketTab === 'created' ? 'active' : ''}
+            onClick={() => setTicketTab('created')}
+          >
+            Tickets I Created (to Superadmin)
+          </button>
+        </div>
+        <div className="ticket-tab-content">
+          {ticketsLoading ? (
+            <div>Loading tickets...</div>
+          ) : ticketsError ? (
+            <div className="error-message">{ticketsError}</div>
+          ) : ticketTab === 'assigned' ? (
+            <TicketList
+              tickets={assignedTickets}
+              onViewTicket={handleViewTicket}
+              onDeleteTicket={handleDeleteTicket}
+              onManageTicket={handleViewTicket}
+              userRole="admin"
+              onForwardTicket={handleForwardTicket}
+            />
+          ) : (
+            <TicketList
+              tickets={createdTickets}
+              onViewTicket={handleViewTicket}
+              onDeleteTicket={null} // No delete for created tickets
+              onManageTicket={null} // No manage for created tickets
+              userRole="admin"
+              onForwardTicket={null}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-dashboard">

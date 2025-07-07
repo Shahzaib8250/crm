@@ -9,7 +9,7 @@ const TicketSchema = new Schema({
   adminId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   enterpriseId: {
     type: String,
@@ -130,7 +130,11 @@ const TicketSchema = new Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+  isAdminTicket: {
+    type: Boolean,
+    default: false
+  },
 }, {
   timestamps: true
 });

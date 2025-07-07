@@ -94,7 +94,9 @@ const TicketList = ({ tickets, onSelectTicket, onManageTicket, onDeleteTicket, o
               </div>
               <div className="ticket-cell ticket-date">{formatDate(ticket.createdAt)}</div>
               <div className="ticket-cell ticket-assigned">
-                {ticket.adminId ? (
+                {(ticket.isAdminTicket || ticket.forwardedToSuperAdmin) ? (
+                  <span className="assigned-superadmin">Superadmin</span>
+                ) : ticket.adminId ? (
                   <div className="assigned-user">
                     <div className="user-initial">
                       {ticket.adminId.profile?.fullName ? ticket.adminId.profile.fullName.charAt(0) : '?'}
