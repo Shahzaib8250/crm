@@ -560,34 +560,43 @@ const createCrmProduct = async (req, res) => {
 const getCrmProducts = async (req, res) => {
   try {
     const { active, category } = req.query;
-    
-    // Build query
-    const query = {};
-    
-    // Filter by active status if provided
-    if (active !== undefined) {
-      query.active = active === 'true';
+    const user = req.user;
+    const enterpriseId = user.enterprise?.enterpriseId;
+    // Build query for enterprise products
+    let enterpriseUsers = [];
+    if (enterpriseId) {
+      enterpriseUsers = await User.find({ 'enterprise.enterpriseId': enterpriseId }, '_id');
     }
-    
-    // Filter by category if provided
-    if (category) {
-      query.category = category;
-    }
-    
-    const products = await Product.find(query).sort({ menuOrder: 1, createdAt: -1 });
-    
-    // Format the response
-    const formattedProducts = products.map(product => {
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const accessUrl = `${baseUrl}/products/access/${product.accessLink}`;
-      
-      return {
-        ...product.toObject(),
-        accessUrl
-      };
+    const enterpriseUserIds = enterpriseUsers.map(u => u._id.toString());
+    // Query for products created by enterprise users
+    const enterpriseQuery = {
+      createdBy: { $in: enterpriseUserIds },
+    };
+    if (active !== undefined) enterpriseQuery.active = active === 'true';
+    if (category) enterpriseQuery.category = category;
+    // Query for products created by superadmin
+    const superadminUsers = await User.find({ role: 'superadmin' }, '_id');
+    const superadminUserIds = superadminUsers.map(u => u._id.toString());
+    const superadminQuery = {
+      createdBy: { $in: superadminUserIds },
+    };
+    if (active !== undefined) superadminQuery.active = active === 'true';
+    if (category) superadminQuery.category = category;
+    // Fetch products
+    const [enterpriseProducts, superadminProducts] = await Promise.all([
+      Product.find(enterpriseQuery).sort({ menuOrder: 1, createdAt: -1 }),
+      Product.find(superadminQuery).sort({ menuOrder: 1, createdAt: -1 })
+    ]);
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const format = (product, editable) => ({
+      ...product.toObject(),
+      accessUrl: `${baseUrl}/products/access/${product.accessLink}`,
+      editable
     });
-    
-    res.json(formattedProducts);
+    res.json({
+      enterpriseProducts: enterpriseProducts.map(p => format(p, true)),
+      superadminProducts: superadminProducts.map(p => format(p, false))
+    });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch products', error: error.message });
   }

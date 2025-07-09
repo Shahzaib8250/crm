@@ -92,7 +92,7 @@ const CRMDashboard = () => {
         </div>
         <div className="crm-pro-header-center">CRM Dashboard</div>
         <div className="crm-pro-header-right">
-          <ThemeToggle />
+        <ThemeToggle />
           <span className="crm-pro-header-bell" title="Notifications">🔔</span>
           <span className="crm-pro-header-profile" title="Profile">👤</span>
         </div>
@@ -135,11 +135,11 @@ const CRMDashboard = () => {
                     >
                       <span className="crm-pro-block-icon">{block.icon}</span>
                       <span className="crm-pro-block-label">{block.label}</span>
-                    </div>
+              </div>
                   ))}
-                </div>
+              </div>
               ))}
-            </div>
+              </div>
           ) : (
             <Outlet />
           )}
@@ -155,15 +155,15 @@ const CRMDashboard = () => {
                   <div className="crm-pro-notification-content">
                     <div className="crm-pro-notification-msg">{n.message}</div>
                     <div className="crm-pro-notification-time">{n.time || ''}</div>
-                  </div>
-                </div>
+              </div>
+            </div>
               ))
             ) : (
               <div className="crm-pro-no-notifications">No notifications</div>
-            )}
+        )}
           </div>
         </aside>
-      </div>
+        </div>
     </div>
   );
 };

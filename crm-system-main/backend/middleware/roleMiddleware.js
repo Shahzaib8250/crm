@@ -33,8 +33,21 @@ function checkPermission(module, action) {
     try {
       // Superadmin always allowed
       if (req.user.role === 'superadmin') return next();
+      // Allow admins with crmAccess for product actions
+      if (
+        req.user.role === 'admin' &&
+        req.user.permissions &&
+        req.user.permissions.crmAccess === true &&
+        module === 'products'
+      ) {
+        return next();
+      }
       // Admins and users: check assigned role
-      if (req.user.permissions && req.user.permissions[module] && req.user.permissions[module][action]) {
+      if (
+        req.user.permissions &&
+        req.user.permissions[module] &&
+        req.user.permissions[module][action]
+      ) {
         return next();
       }
       return res.status(403).json({ error: 'Permission denied' });

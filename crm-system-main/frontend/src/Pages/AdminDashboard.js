@@ -2262,15 +2262,15 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
           <div className="section-container">
               <h1 className="section-title">User Management</h1>
               <div style={{ display: 'flex', flexDirection: 'row', gap: '12px', marginBottom: '16px' }}>
-                <button 
-                  className="create-btn" 
-                  onClick={() => {
-                    resetForm();
-                    setOpenDialog(true);
-                  }}
-                >
+              <button 
+                className="create-btn" 
+                onClick={() => {
+                  resetForm();
+                  setOpenDialog(true);
+                }}
+              >
                   + Create New User
-                </button>
+              </button>
                 <button
                   className="create-btn"
                   style={{ background: '#1976d2', color: '#fff' }}
