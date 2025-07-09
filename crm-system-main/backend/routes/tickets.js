@@ -28,12 +28,13 @@ const upload = multer({
 // Create a new ticket (Both admin and regular users)
 router.post('/', authenticateToken, upload.array('attachments', 5), async (req, res) => {
   try {
-    // Debug: Log user info
+    // Defensive: Always use the authenticated user's role
     if (!req.user || !req.user.id) {
       console.error('No authenticated user found in ticket creation');
       return res.status(401).json({ message: 'Authentication required to create a ticket.' });
     }
-    console.log('Creating ticket for user ID:', req.user.id);
+    // Log user info for debugging
+    console.log('Creating ticket for user ID:', req.user.id, 'role:', req.user.role);
 
     // Log the incoming request
     console.log('Received ticket creation request:', {
@@ -116,7 +117,7 @@ router.post('/', authenticateToken, upload.array('attachments', 5), async (req, 
       enterpriseId = currentUser.enterprise?.enterpriseId || '';
     }
 
-    // Create new ticket
+    // Defensive: Ignore any isAdminTicket/forwardedToSuperAdmin from frontend
     let ticketData = {
       name: req.body.name,
       email: req.body.email,
@@ -132,17 +133,35 @@ router.post('/', authenticateToken, upload.array('attachments', 5), async (req, 
       enterpriseId: enterpriseId
     };
 
-    if (req.user.role === 'admin') {
-      // Admin ticket to superadmin
-      ticketData.isAdminTicket = true;
-      ticketData.forwardedToSuperAdmin = true;
-      ticketData.adminId = null;
+    // Defensive: Always set ticket type based on authenticated user's role
+    // Extra: Only allow admin tickets if explicitly requested (e.g., from admin dashboard)
+    let isAdminTicket = false;
+    let forwardedToSuperAdmin = false;
+    let adminIdToSet = adminId;
+
+    // Check for explicit admin ticket creation (e.g., from admin dashboard)
+    // You can use a custom header or a field in the request body, e.g., req.body.forceAdminTicket
+    const forceAdminTicket = req.body.forceAdminTicket === true || req.headers['x-force-admin-ticket'] === 'true';
+    console.log('Ticket creation source:', {
+      userId: req.user.id,
+      role: req.user.role,
+      forceAdminTicket,
+      path: req.originalUrl
+    });
+
+    if (req.user.role === 'admin' && forceAdminTicket) {
+      isAdminTicket = true;
+      forwardedToSuperAdmin = true;
+      adminIdToSet = null;
     } else {
-      // User ticket to admin
-      ticketData.isAdminTicket = false;
-      ticketData.forwardedToSuperAdmin = false;
-      ticketData.adminId = adminId;
+      isAdminTicket = false;
+      forwardedToSuperAdmin = false;
+      // For user or admin acting as user, assign to adminId
     }
+
+    ticketData.isAdminTicket = isAdminTicket;
+    ticketData.forwardedToSuperAdmin = forwardedToSuperAdmin;
+    ticketData.adminId = adminIdToSet;
 
     const ticket = new Ticket(ticketData);
 
@@ -259,7 +278,7 @@ router.get('/user', authenticateToken, async (req, res) => {
       return res.status(401).json({ message: 'Authentication required to fetch tickets.' });
     }
     console.log('GET /api/tickets/user called by user:', req.user.id);
-    const tickets = await Ticket.find({ submittedBy: req.user.id })
+    const tickets = await Ticket.find({ submittedBy: req.user.id, isAdminTicket: false })
       .populate('adminId', 'email profile.fullName')
       .sort({ createdAt: -1 });
     console.log('Tickets found for user:', req.user.id, 'Count:', tickets.length);
@@ -453,6 +472,36 @@ router.put('/:id', authenticateToken, authorizeRole('superadmin', 'admin'), asyn
   }
 });
 
+// Update only the status of a ticket (Admin and Superadmin)
+router.put('/:id/status', authenticateToken, authorizeRole('superadmin', 'admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!id) {
+      return res.status(400).json({ message: 'Ticket ID is required' });
+    }
+    if (!status || !['Open', 'In Progress', 'Resolved', 'Closed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid or missing status value' });
+    }
+    const ticket = await Ticket.findById(id);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+    // Only allow admin to update tickets assigned to them
+    if (req.user.role === 'admin') {
+      if (ticket.isAdminTicket || String(ticket.adminId) !== String(req.user.id)) {
+        return res.status(403).json({ message: 'Admins can only update tickets assigned to them from users.' });
+      }
+    }
+    ticket.status = status;
+    await ticket.save();
+    res.json({ status: ticket.status });
+  } catch (error) {
+    console.error('Error updating ticket status:', error);
+    res.status(500).json({ message: 'Error updating ticket status', error: error.message });
+  }
+});
+
 // Add response to ticket (Superadmin only)
 router.post('/:ticketId/responses', authenticateToken, authorizeRole('superadmin'), async (req, res) => {
   try {
@@ -604,7 +653,7 @@ router.delete('/:id', authenticateToken, authorizeRole('superadmin', 'admin'), a
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
-    // Permission check for admin
+    // Permission check for admin only
     if (req.user.role === 'admin') {
       if (ticket.isAdminTicket || String(ticket.adminId) !== String(req.user.id)) {
         return res.status(403).json({ message: 'Admins can only delete tickets assigned to them from users.' });
@@ -679,6 +728,30 @@ router.get('/admin/created', authenticateToken, authorizeRole('admin'), async (r
   } catch (error) {
     console.error('Error fetching tickets created by admin:', error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Add response to ticket (User follow-up)
+router.post('/:ticketId/messages', authenticateToken, authorizeRole('user'), async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.ticketId);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+    // Only the user who submitted the ticket can add a message
+    if (String(ticket.submittedBy) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'You can only add messages to your own tickets.' });
+    }
+    ticket.responses.push({
+      message: req.body.message,
+      role: 'user',
+      createdAt: new Date()
+    });
+    await ticket.save();
+    res.json(ticket);
+  } catch (error) {
+    console.error('Error adding user message:', error);
+    res.status(400).json({ message: error.message });
   }
 });
 

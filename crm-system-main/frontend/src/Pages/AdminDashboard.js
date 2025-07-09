@@ -161,6 +161,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const [ticketTab, setTicketTab] = useState('assigned');
   const [assignedTickets, setAssignedTickets] = useState([]);
   const [createdTickets, setCreatedTickets] = useState([]);
+  const [manageTicketError, setManageTicketError] = useState('');
+  const [modalMode, setModalMode] = useState('view'); // 'view' or 'manage'
 
   // Ref to hold the current ticketsLoading state to prevent stale closures in useCallback
   const ticketsLoadingRef = useRef(ticketsLoading);
@@ -2252,7 +2254,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                 <TicketList
                   tickets={(tickets || [])}
                   onSelectTicket={() => { /* Admin doesn't need to select individual tickets for detail */ } }
-                  onManageTicket={() => { /* Admin doesn't manage tickets like SuperAdmin */ } }
+                  onManageTicket={handleOpenTicketModal}
                   onDeleteTicket={ticket => handleDeleteTicket(ticket)}
                   onViewTicket={handleViewTicket}
                   userRole="admin"
@@ -3078,8 +3080,11 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     };
   }, [showAlert]);
 
-  const handleViewTicket = useCallback((ticket) => {
+  // Unified handler to open the ticket modal for any ticket
+  const handleOpenTicketModal = useCallback((ticket, mode = 'view') => {
+    console.log('[AdminDashboard] handleOpenTicketModal called with:', ticket, 'mode:', mode);
     setSelectedTicket(ticket);
+    setModalMode(mode);
     setShowViewTicketModal(true);
   }, []);
 
@@ -3089,10 +3094,17 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   }, []);
 
   const handleDeleteTicket = async (ticket) => {
-    // Only allow deletion if status is 'Open' (case-insensitive)
+    // Only allow deletion if status is 'Open' (case-insensitive) and admin is assigned and not an admin ticket
     if (!ticket || typeof ticket.status !== 'string' || ticket.status.toLowerCase() !== 'open') {
       showAlert("You don't have permission to delete this ticket", 'error');
       return;
+    }
+    // For admin, check assignment and isAdminTicket
+    if (currentUser?.role === 'admin') {
+      if (ticket.isAdminTicket || String(ticket.adminId?._id || ticket.adminId) !== String(currentUser.id)) {
+        showAlert("Admins can only delete tickets assigned to them from users.", 'error');
+        return;
+      }
     }
     try {
       const token = localStorage.getItem('token');
@@ -3100,7 +3112,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       showAlert('Ticket deleted successfully', 'success');
-      // fetchTickets(); // Removed: WebSocket should handle update
+      // fetchTickets(); // WebSocket should handle update
     } catch (error) {
       console.error('Failed to delete ticket:', error);
       showAlert(error.response?.data?.message || 'Failed to delete ticket', 'error');
@@ -3257,8 +3269,17 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   // Ticket tab UI and rendering
   function renderTicketsSection() {
+    if (!currentUser || !currentUser._id) {
+      return <div>Loading your profile...</div>;
+    }
     return (
       <div className="admin-tickets-section">
+        {/* Show error message if admin tries to manage their own ticket */}
+        {manageTicketError && (
+          <div className="error-message" style={{ color: 'red', margin: '10px 0' }}>
+            {manageTicketError}
+          </div>
+        )}
         <div className="ticket-tabs">
           <button
             className={ticketTab === 'assigned' ? 'active' : ''}
@@ -3281,20 +3302,22 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
           ) : ticketTab === 'assigned' ? (
             <TicketList
               tickets={assignedTickets}
-              onViewTicket={handleViewTicket}
+              onViewTicket={handleOpenTicketModal}
               onDeleteTicket={handleDeleteTicket}
-              onManageTicket={handleViewTicket}
+              onManageTicket={handleOpenTicketModal}
               userRole="admin"
               onForwardTicket={handleForwardTicket}
+              currentUserId={currentUser._id}
             />
           ) : (
             <TicketList
               tickets={createdTickets}
-              onViewTicket={handleViewTicket}
-              onDeleteTicket={null} // No delete for created tickets
-              onManageTicket={null} // No manage for created tickets
+              onViewTicket={handleOpenTicketModal}
+              onDeleteTicket={handleDeleteTicket}
+              onManageTicket={handleOpenTicketModal}
               userRole="admin"
-              onForwardTicket={null}
+              onForwardTicket={handleForwardTicket}
+              currentUserId={currentUser._id}
             />
           )}
         </div>
@@ -3302,8 +3325,31 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     );
   }
 
+  // Remove restrictive logic from handleViewTicket
+  const handleViewTicket = useCallback((ticket) => {
+    setSelectedTicket(ticket);
+    setShowViewTicketModal(true);
+  }, []);
+
   return (
     <div className="admin-dashboard">
+      {manageTicketError && (
+        <div className="error-message" style={{
+          color: 'white',
+          background: 'red',
+          padding: '12px',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '1.2em',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          zIndex: 9999
+        }}>
+          {manageTicketError}
+        </div>
+      )}
       <div className="dashboard-frame">
         {/* Main Dashboard Area */}
         <div className="dashboard-container">
@@ -3868,14 +3914,28 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       )}
 
       {/* Ticket Details Modal */}
+      {console.log('[AdminDashboard] Render: showViewTicketModal:', showViewTicketModal, 'selectedTicket:', selectedTicket, 'modalMode:', modalMode)}
       {showViewTicketModal && selectedTicket && (
-        <TicketDetailsModal
-          isOpen={showViewTicketModal}
-          onClose={handleCloseViewModal}
-          ticket={selectedTicket}
-          userRole="admin" // Explicitly set role for admin dashboard
-          onForwardTicket={handleForwardTicket}
-        />
+        (() => {
+          // Calculate canManage for the selected ticket and current user
+          let canManage = false;
+          if (selectedTicket && currentUser) {
+            canManage = (
+              String(selectedTicket.adminId?._id || selectedTicket.adminId) === String(currentUser._id || currentUser.id)
+            );
+          }
+          return (
+            <TicketDetailsModal
+              isOpen={showViewTicketModal}
+              onClose={handleCloseViewModal}
+              ticket={selectedTicket}
+              userRole="admin"
+              onResponseAdded={fetchTickets}
+              canManage={canManage}
+              mode={modalMode}
+            />
+          );
+        })()
       )}
 
       {/* Quotation Form Dialog */}

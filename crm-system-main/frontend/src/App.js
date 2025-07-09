@@ -26,6 +26,7 @@ import SubuserTickets from './Pages/SubuserTickets';
 import SubuserProducts from './Pages/SubuserProducts';
 import SubuserProfile from './Pages/SubuserProfile';
 import SubuserNotifications from './Pages/SubuserNotifications';
+import Modal from 'react-modal';
 
 /**
  * App Component - Main routing setup for the CRM application
@@ -36,6 +37,7 @@ import SubuserNotifications from './Pages/SubuserNotifications';
  * @returns {JSX.Element} The router configuration with all app routes
  */
 const App = () => {
+  Modal.setAppElement('#root');
   return (
     <ThemeProvider>
       <NotificationProvider>
