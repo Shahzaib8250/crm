@@ -21,7 +21,7 @@ exports.getAllServices = async (req, res) => {
     
     let services = [];
     
-    services = await Service.find(query).sort({ createdAt: -1 });
+    services = await Service.find(query).sort({ createdAt: -1 }).populate('createdBy', 'role email enterprise');
     
     res.status(200).json(services);
   } catch (error) {

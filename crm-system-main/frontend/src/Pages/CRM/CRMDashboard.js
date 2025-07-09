@@ -16,8 +16,8 @@ const moduleBlocks = [
     { label: 'Invoices', route: 'invoices', icon: '🧾' },
   ],
   [
-    { label: 'Reports & Analytics', route: 'reports', icon: '📊' },
-    { label: 'Complaints/Help', route: 'complaints', icon: '❓' },
+    { label: 'Reports', route: 'reports', icon: '📊' },
+    { label: 'Create Ticket', route: 'create-ticket', icon: '🎫' },
   ],
   [
     { label: 'Customers', route: 'customers', icon: '👥' },
@@ -107,7 +107,7 @@ const CRMDashboard = () => {
             {sidebarLinks.map(link => (
               <NavLink
                 key={link.label}
-                to={link.route}
+                to={link.route === '.' ? '.' : `/crm/${link.route}`}
                 className={({ isActive }) => isActive ? 'crm-pro-sidebar-link active' : 'crm-pro-sidebar-link'}
                 end={link.route === '.'}
                 title={link.label}

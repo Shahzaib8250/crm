@@ -26,6 +26,12 @@ import SubuserTickets from './Pages/SubuserTickets';
 import SubuserProducts from './Pages/SubuserProducts';
 import SubuserProfile from './Pages/SubuserProfile';
 import SubuserNotifications from './Pages/SubuserNotifications';
+import ServiceManagement from './Pages/CRM/ServiceManagement';
+import QuotationManagement from './Pages/CRM/QuotationManagement';
+import InvoiceManagement from './Pages/CRM/InvoiceManagement';
+import Reports from './Pages/CRM/Reports';
+import CreateTicket from './Pages/CRM/CreateTicket';
+import SalesManagement from './Pages/CRM/SalesManagement';
 
 /**
  * App Component - Main routing setup for the CRM application
@@ -87,8 +93,15 @@ const App = () => {
               {/* CRM Dashboard & Modules */}
               <Route path="/crm/*" element={<CRMDashboard />}>
                 <Route path="products" element={<ProductManagement />} />
+                <Route path="services" element={<ServiceManagement />} />
                 <Route path="leads" element={<LeadManagement />} />
                 <Route path="users" element={<UserRoleManagement />} />
+                <Route path="quotations" element={<QuotationManagement />} />
+                <Route path="invoices" element={<InvoiceManagement />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="create-ticket" element={<CreateTicket />} />
+                <Route path="customers" element={<CustomerManagement />} />
+                <Route path="sales" element={<SalesManagement />} />
                 <Route path="audit-logs" element={<AuditLog />} />
                 {/* Catch-all for invalid/nested CRM routes */}
                 <Route path="*" element={<Navigate to="/crm" replace />} />

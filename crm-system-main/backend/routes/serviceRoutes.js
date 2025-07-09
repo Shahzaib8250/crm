@@ -17,6 +17,9 @@ router.delete('/:id', authenticateToken, authorizeRole('superadmin'), serviceCon
 // Admin service routes - read only
 router.get('/admin', authenticateToken, authorizeRole('admin'), serviceController.getAllServices);
 
+// Admin service routes - allow create for admin
+router.post('/admin', authenticateToken, authorizeRole('admin'), serviceController.createService);
+
 // Quotation routes (must come before /admin/:id to avoid conflicts)
 router.get('/admin/quotations', authenticateToken, authorizeRole('admin'), serviceController.getAdminQuotations);
 router.post('/admin/:serviceId/quotation', authenticateToken, authorizeRole('admin'), serviceController.requestQuotation);
