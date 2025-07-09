@@ -1,7 +1,12 @@
 import React from 'react';
 import './TicketList.css';
+import { getUserInfo } from '../../../services/authService';
 
 const TicketList = ({ tickets, onSelectTicket, onManageTicket, onDeleteTicket, onViewTicket, loading, error, userRole }) => {
+  console.log('[TicketList] props:', { onManageTicket });
+  const userInfo = getUserInfo();
+  const currentUserId = userInfo?._id || userInfo?.id;
+
   // Format date for display
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -74,73 +79,87 @@ const TicketList = ({ tickets, onSelectTicket, onManageTicket, onDeleteTicket, o
         </div>
       ) : (
         <div className="ticket-list-body">
-          {tickets.map(ticket => (
-            <div 
-              key={ticket._id} 
-              className="ticket-row"
-              // onClick={() => onSelectTicket(ticket)} // Row click might interfere with button clicks
-            >
-              <div className="ticket-cell ticket-id">{ticket.ticketNo || 'TKT-000'}</div>
-              <div className="ticket-cell ticket-subject">{ticket.subject}</div>
-              <div className="ticket-cell ticket-priority">
-                <span className={`priority-badge ${getPriorityClass(ticket.priority)}`}>
-                  {ticket.priority}
-                </span>
-              </div>
-              <div className="ticket-cell ticket-status">
-                <span className={`status-badge ${getStatusClass(ticket.status)}`}>
-                  {ticket.status}
-                </span>
-              </div>
-              <div className="ticket-cell ticket-date">{formatDate(ticket.createdAt)}</div>
-              <div className="ticket-cell ticket-assigned">
-                {ticket.adminId ? (
-                  <div className="assigned-user">
-                    <div className="user-initial">
-                      {ticket.adminId.profile?.fullName ? ticket.adminId.profile.fullName.charAt(0) : '?'}
+          {tickets.map(ticket => {
+            // Debug: Log adminId, currentUserId, and check result
+            const adminIdValue = ticket.adminId?._id || ticket.adminId;
+            const canManage = userRole === 'superadmin' || (userRole === 'admin' && !ticket.isAdminTicket && ticket.adminId && String(adminIdValue) === String(currentUserId));
+            console.log('[TicketList] Ticket:', ticket.ticketNo, 'adminId:', adminIdValue, 'currentUserId:', currentUserId, 'canManage:', canManage);
+            return (
+              <div 
+                key={ticket._id} 
+                className="ticket-row"
+                // onClick={() => onSelectTicket(ticket)} // Row click might interfere with button clicks
+              >
+                <div className="ticket-cell ticket-id">{ticket.ticketNo || 'TKT-000'}</div>
+                <div className="ticket-cell ticket-subject">{ticket.subject}</div>
+                <div className="ticket-cell ticket-priority">
+                  <span className={`priority-badge ${getPriorityClass(ticket.priority)}`}>
+                    {ticket.priority}
+                  </span>
+                </div>
+                <div className="ticket-cell ticket-status">
+                  <span className={`status-badge ${getStatusClass(ticket.status)}`}>
+                    {ticket.status}
+                  </span>
+                </div>
+                <div className="ticket-cell ticket-date">{formatDate(ticket.createdAt)}</div>
+                <div className="ticket-cell ticket-assigned">
+                  {(ticket.isAdminTicket || ticket.forwardedToSuperAdmin) ? (
+                    <span className="assigned-superadmin">Superadmin</span>
+                  ) : ticket.adminId ? (
+                    <div className="assigned-user">
+                      <div className="user-initial">
+                        {ticket.adminId.profile?.fullName ? ticket.adminId.profile.fullName.charAt(0) : '?'}
+                      </div>
+                      <span>{ticket.adminId.profile?.fullName || 'Unknown'}</span>
                     </div>
-                    <span>{ticket.adminId.profile?.fullName || 'Unknown'}</span>
-                  </div>
-                ) : (
-                  <span className="unassigned">Unassigned</span>
-                )}
-              </div>
-              <div className="ticket-cell ticket-enterprise">
-                {ticket.submittedBy?.enterprise?.companyName || 'N/A'}
-              </div>
-              <div className="ticket-cell ticket-actions">
-                <button
-                  className="view-ticket-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewTicket(ticket);
-                  }}
-                >
-                  View
-                </button>
-                {userRole === 'superadmin' && (
+                  ) : (
+                    <span className="unassigned">Unassigned</span>
+                  )}
+                </div>
+                <div className="ticket-cell ticket-enterprise">
+                  {ticket.submittedBy?.enterprise?.companyName || 'N/A'}
+                </div>
+                <div className="ticket-cell ticket-actions">
+                  <button
+                    className="view-ticket-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewTicket(ticket, 'view');
+                    }}
+                  >
+                    View
+                  </button>
                   <button
                     className="manage-ticket-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onManageTicket(ticket);
+                      console.log('[TicketList] Manage button clicked for ticket:', ticket);
+                      console.log('[TicketList] onManageTicket:', onManageTicket);
+                      if (typeof onManageTicket === 'function') {
+                        onManageTicket(ticket, 'manage');
+                      } else {
+                        console.error('onManageTicket is not a function:', onManageTicket);
+                      }
                     }}
                   >
                     Manage
                   </button>
-                )}
-                <button 
-                  className="delete-ticket-btn"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent row click from triggering
-                    onDeleteTicket(ticket._id);
-                  }}
-                >
-                  Delete
-                </button>
+                  {canManage && (
+                    <button 
+                      className="delete-ticket-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteTicket(ticket);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

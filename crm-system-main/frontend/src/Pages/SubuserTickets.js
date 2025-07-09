@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getUserInfo } from '../services/authService';
 import './UserDashboard.css';
+import Modal from 'react-modal';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -19,6 +20,8 @@ const SubuserTickets = () => {
     priority: 'Low'
   });
   const [submitting, setSubmitting] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
+  const [manageFormData, setManageFormData] = useState({ status: '', message: '' });
 
   const currentUser = getUserInfo();
 
@@ -62,11 +65,18 @@ const SubuserTickets = () => {
   };
 
   const handleOpenModal = (ticket) => {
+    console.log('[SubuserTickets] handleOpenModal called with:', ticket);
+    if (ticket.isAdminTicket) {
+      alert("You can't manage your own created tickets.");
+      return;
+    }
     setSelectedTicket(ticket);
+    setManageFormData({ status: ticket.status, message: '' });
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
+    console.log('[SubuserTickets] handleCloseModal called');
     setShowModal(false);
     setSelectedTicket(null);
   };
@@ -121,8 +131,38 @@ const SubuserTickets = () => {
       setSubmitting(false);
     }
   };
+
+  const handleManagementFormChange = (e) => {
+    setManageFormData({ ...manageFormData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmitManagementForm = async (e) => {
+    e.preventDefault();
+    if (!selectedTicket) return;
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/api/tickets/${selectedTicket._id}`, {
+        status: manageFormData.status,
+        message: manageFormData.message,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setShowModal(false);
+      setSelectedTicket(null);
+      setManageFormData({ status: '', message: '' });
+      fetchTickets();
+      alert('Ticket updated successfully!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update ticket');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
     <div className="subuser-module-card">
+      {/* Debug log for modal and selectedTicket state */}
+      {console.log('[SubuserTickets] Render: showModal:', showModal, 'selectedTicket:', selectedTicket)}
       <h2>My Support Tickets</h2>
       
       {/* Create New Ticket Button */}
@@ -253,46 +293,61 @@ const SubuserTickets = () => {
       )}
 
       {/* Ticket Detail Modal */}
-      {showModal && selectedTicket && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal ticket-detail-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{selectedTicket.subject}</h3>
-              <button className="close-btn" onClick={handleCloseModal}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <div className="ticket-info">
-                <p><b>Status:</b> <span className={`status-${selectedTicket.status.toLowerCase()}`}>{selectedTicket.status}</span></p>
-                <p><b>Priority:</b> {selectedTicket.priority}</p>
-                <p><b>Category:</b> {selectedTicket.category}</p>
-                <p><b>Created:</b> {new Date(selectedTicket.createdAt).toLocaleString()}</p>
-                <p><b>Assigned to:</b> {selectedTicket.adminId?.profile?.fullName || 'Enterprise Admin'}</p>
+      <Modal
+        isOpen={showModal && selectedTicket && !selectedTicket.isAdminTicket}
+        onRequestClose={handleCloseModal}
+        contentLabel="Manage Ticket"
+        className="Modal"
+        overlayClassName="Overlay"
+      >
+        {selectedTicket && !selectedTicket.isAdminTicket && (
+          <div className="modal-content">
+            <h3>Manage Ticket: {selectedTicket.subject}</h3>
+            <p><strong>Ticket No:</strong> {selectedTicket.ticketNo || 'TKT-000'}</p>
+            <p><strong>Status:</strong> {selectedTicket.status}</p>
+            <p><strong>Priority:</strong> {selectedTicket.priority}</p>
+            <p><strong>Created By:</strong> {selectedTicket.name}</p>
+            <hr/>
+            <form onSubmit={handleSubmitManagementForm}>
+              <div className="form-group">
+                <label htmlFor="status">Update Status:</label>
+                <select
+                  id="status"
+                  name="status"
+                  value={manageFormData.status || selectedTicket.status}
+                  onChange={handleManagementFormChange}
+                  className="form-control"
+                >
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                </select>
               </div>
-              
-              <div className="ticket-message">
-                <h4>Your Message:</h4>
-                <p>{selectedTicket.message}</p>
+              <div className="form-group">
+                <label htmlFor="message">Add Response:</label>
+                <textarea
+                  id="message"
+                  name="message"
+                  value={manageFormData.message}
+                  onChange={handleManagementFormChange}
+                  placeholder="Type your response here..."
+                  rows="4"
+                  className="form-control"
+                ></textarea>
               </div>
-
-              {/* Responses */}
-              {selectedTicket.responses && selectedTicket.responses.length > 0 && (
-                <div className="ticket-responses">
-                  <h4>Responses:</h4>
-                  {selectedTicket.responses.map((response, index) => (
-                    <div key={`${selectedTicket._id}-response-${index}`} className={`response ${response.role}`}>
-                      <div className="response-header">
-                        <strong>{response.role === 'admin' ? 'Enterprise Admin' : 'Super Admin'}</strong>
-                        <span>{new Date(response.createdAt).toLocaleString()}</span>
-                      </div>
-                      <div className="response-message">{response.message}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={handleCloseModal}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };

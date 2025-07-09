@@ -42,6 +42,7 @@ import SalesManagement from './Pages/CRM/SalesManagement';
  * @returns {JSX.Element} The router configuration with all app routes
  */
 const App = () => {
+  Modal.setAppElement('#root');
   return (
     <ThemeProvider>
       <NotificationProvider>
