@@ -6,11 +6,13 @@ import websocketService from '../../../services/websocketService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded, onForwardTicket }) => {
+const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded, onForwardTicket, canManage = true, mode = 'view' }) => {
+  console.log('[TicketDetailsModal] Rendered with:', { isOpen, ticket, userRole, canManage, mode });
   const [newResponse, setNewResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
   const [currentResponses, setCurrentResponses] = useState([]);
+  const [status, setStatus] = useState(ticket && ticket.status ? ticket.status : 'Open');
 
   useEffect(() => {
     if (isOpen && ticket) {
@@ -20,6 +22,7 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
         new Date(a.createdAt) - new Date(b.createdAt)
       );
       setCurrentResponses(sortedResponses);
+      setStatus(ticket.status); // Sync status with ticket when modal opens
     }
   }, [isOpen, ticket, userRole]);
 
@@ -135,119 +138,226 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
     }
   };
 
+  const handleStatusChange = async (e) => {
+    const newStatus = e.target.value;
+    setStatus(newStatus);
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(`${API_URL}/api/tickets/${ticket._id}/status`, {
+        status: newStatus
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.data && response.data.status === newStatus) {
+        showAlert('Status updated successfully!', 'success');
+        if (onResponseAdded) onResponseAdded();
+      } else {
+        showAlert('Failed to update status.', 'error');
+      }
+    } catch (error) {
+      showAlert('Error updating status.', 'error');
+      console.error('Status update error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Determine if editing should be disabled for admin
+  const isSuperAdminTicket = ticket && (ticket.forwardedToSuperAdmin || ticket.isAdminTicket);
+  const isAdmin = userRole === 'admin';
+  const disableAdminEdit = isAdmin && isSuperAdminTicket;
+
+  // Chat bubble color classes by role
+  const getChatBubbleClass = (role) => {
+    switch (role) {
+      case 'admin':
+        return 'chat-bubble-admin';
+      case 'superadmin':
+        return 'chat-bubble-superadmin';
+      case 'user':
+      default:
+        return 'chat-bubble-user';
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
       onRequestClose={onClose}
+      contentLabel="Ticket Details"
       className="ticket-details-modal"
-      overlayClassName="modal-overlay"
+      overlayClassName="modal-backdrop"
+      ariaHideApp={false}
     >
-      <div className="ticket-details-container">
-        <div className="ticket-details-header">
-          <h2>Ticket Details</h2>
-          <button className="close-button" onClick={onClose}>&times;</button>
-        </div>
-
+      <div className="modal-header">
+        <h2>{mode === 'manage' ? 'Manage Ticket' : 'Ticket Details'}</h2>
+        <button className="close-btn" onClick={onClose}>×</button>
+      </div>
+      <div className="modal-body">
         {alert.show && (
-          <div className={`alert alert-${alert.type}`}>
+          <div className={`alert alert-${alert.type}`} style={{ marginBottom: 12 }}>
             {alert.message}
           </div>
         )}
-
-        <div className="ticket-info">
-          <div className="info-group">
-            <label>Subject</label>
-            <p>{ticket?.subject}</p>
+        {/* Fallback if ticket is null or undefined */}
+        {!ticket ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>
+            No ticket selected or ticket data unavailable.
           </div>
-          <div className="info-group">
-            <label>Status</label>
-            <p className={`status ${ticket?.status?.toLowerCase()}`}>{ticket?.status}</p>
-          </div>
-          <div className="info-group">
-            <label>Priority</label>
-            <p>{ticket?.priority}</p>
-          </div>
-          <div className="info-group">
-            <label>Category</label>
-            <p>{ticket?.category}</p>
-          </div>
-          <div className="info-group">
-            <label>Submitted By</label>
-            <p>{ticket?.submittedBy?.profile?.fullName || ticket?.name}</p>
-          </div>
-          <div className="info-group">
-            <label>Created</label>
-            <p>{new Date(ticket?.createdAt).toLocaleString()}</p>
-          </div>
-          {ticket?.forwardedToSuperAdmin && (
-            <div className="info-group">
-              <label>Forwarded to Super Admin</label>
-              <p className="forwarded-status">Yes - {new Date(ticket?.forwardedAt).toLocaleString()}</p>
-            </div>
-          )}
-          <div className="info-group">
-            <label>Message</label>
-            <p>{ticket?.message}</p>
-          </div>
-        </div>
-
-        {/* Forward to Super Admin Button (only for enterprise admins) */}
-        {userRole === 'admin' && !ticket?.forwardedToSuperAdmin && onForwardTicket && (
-          <div className="forward-section">
-            <button 
-              className="forward-btn"
-              onClick={() => onForwardTicket(ticket)}
-            >
-              Forward to Super Admin
-            </button>
-          </div>
-        )}
-
-        <div className="responses-section">
-          <h3>Conversation</h3>
-          <div className="responses-list">
-            {currentResponses.length > 0 ? (
-              currentResponses.map((response, index) => {
-                console.log(`Response ${index} role:`, response.role); // DEBUG: Log each response's role
-                return (
-                <div 
-                  key={index} 
-                  className={`response-item ${response.role === 'superadmin' ? 'superadmin-response' : 'admin-response'}`}
+        ) : (
+          mode === 'manage' && canManage && !disableAdminEdit ? (
+            <form className="manage-form-section" onSubmit={handleSubmitResponse}>
+              <div className="form-group">
+                <label><strong>Title:</strong></label>
+                <input type="text" value={ticket.subject || ''} readOnly disabled />
+              </div>
+              <div className="form-group">
+                <label><strong>Description:</strong></label>
+                <textarea value={ticket.message || ticket.description || ''} readOnly disabled rows={3} />
+              </div>
+              <div className="form-group">
+                <label><strong>Status:</strong></label>
+                <select
+                  value={status}
+                  onChange={handleStatusChange}
+                  disabled={!canManage || loading}
                 >
-                  <div className="response-header">
-                    <span className="response-role">
-                      {response.role === 'superadmin' ? 'Super Admin' : 'Admin'}
-                    </span>
-                    <span className="response-time">
-                      {new Date(response.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="response-message">{response.message}</p>
+                  <option value="Open">Open</option>
+                  <option value="Working">Working</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label><strong>Add Response:</strong></label>
+                <textarea
+                  value={newResponse}
+                  onChange={e => setNewResponse(e.target.value)}
+                  placeholder="Type your response..."
+                  rows={4}
+                  disabled={!canManage}
+                />
+              </div>
+              <button type="submit" className="submit-response-btn" disabled={loading || !canManage}>
+                {loading ? 'Sending...' : 'Send Response'}
+              </button>
+              <div className="responses-list">
+                <h3>Conversation</h3>
+                {currentResponses.length > 0 ? (
+                  currentResponses.map((response, index) => (
+                    <div key={index} className="response-item">
+                      <div className="response-header">
+                        <span className="response-role">{response.role}</span>
+                        <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="response-message">{response.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-responses">No messages yet. Start the conversation!</p>
+                )}
+              </div>
+            </form>
+          ) : mode === 'manage' && canManage && disableAdminEdit ? (
+            <div className="ticket-details-section">
+              <div className="manage-warning" style={{ color: 'red', marginBottom: 12 }}>
+                This ticket has been submitted to Super Admin. Admins can no longer edit or respond to this ticket.
+              </div>
+              <p><strong>Subject:</strong> {ticket.subject || ''}</p>
+              <p><strong>Description:</strong> {ticket.message || ticket.description || ''}</p>
+              <p><strong>Status:</strong> {ticket.status || ''}</p>
+              <p><strong>Priority:</strong> {ticket.priority || ''}</p>
+              <div className="responses-list chat-interface">
+                <h3>Conversation</h3>
+                {currentResponses.length > 0 ? (
+                  currentResponses.map((response, index) => (
+                    <div key={index} className={`response-item ${getChatBubbleClass(response.role)}`}> 
+                      <div className="response-header">
+                        <span className="response-role">{response.role}</span>
+                        <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="response-message">{response.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-responses">No messages yet. Start the conversation!</p>
+                )}
+              </div>
+            </div>
+          ) : mode === 'view' && !disableAdminEdit ? (
+            <div className="ticket-details-section">
+              <p><strong>Subject:</strong> {ticket.subject || ''}</p>
+              <p><strong>Description:</strong> {ticket.message || ticket.description || ''}</p>
+              <p><strong>Status:</strong> {ticket.status || ''}</p>
+              <p><strong>Priority:</strong> {ticket.priority || ''}</p>
+              <div className="responses-list chat-interface">
+                <h3>Conversation</h3>
+                {currentResponses.length > 0 ? (
+                  currentResponses.map((response, index) => (
+                    <div key={index} className={`response-item ${getChatBubbleClass(response.role)}`}> 
+                      <div className="response-header">
+                        <span className="response-role">{response.role}</span>
+                        <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="response-message">{response.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-responses">No messages yet. Start the conversation!</p>
+                )}
+              </div>
+              <form className="add-response-form" onSubmit={handleSubmitResponse} style={{marginTop: 16}}>
+                <div className="form-group">
+                  <label><strong>Add Response:</strong></label>
+                  <textarea
+                    value={newResponse}
+                    onChange={e => setNewResponse(e.target.value)}
+                    placeholder="Type your response..."
+                    rows={3}
+                    disabled={loading}
+                  />
                 </div>
-              )})
-            ) : (
-              <p className="no-responses">No messages yet. Start the conversation!</p>
-            )}
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmitResponse} className="response-form">
-          <textarea
-            value={newResponse}
-            onChange={(e) => setNewResponse(e.target.value)}
-            placeholder={`Type your message as ${userRole === 'superadmin' ? 'Super Admin' : 'Admin'}...`}
-            rows="4"
-            required
-          />
-          <button 
-            type="submit" 
-            className="submit-response-btn"
-            disabled={loading}
-          >
-            {loading ? 'Sending...' : 'Send Message'}
-          </button>
-        </form>
+                <button type="submit" className="submit-response-btn" disabled={loading}>
+                  {loading ? 'Sending...' : 'Send Response'}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="ticket-details-section">
+              <p><strong>Subject:</strong> {ticket.subject || ''}</p>
+              <p><strong>Description:</strong> {ticket.message || ticket.description || ''}</p>
+              <p><strong>Status:</strong> {ticket.status || ''}</p>
+              <p><strong>Priority:</strong> {ticket.priority || ''}</p>
+              <div className="responses-list chat-interface">
+                <h3>Conversation</h3>
+                {currentResponses.length > 0 ? (
+                  currentResponses.map((response, index) => (
+                    <div key={index} className={`response-item ${getChatBubbleClass(response.role)}`}> 
+                      <div className="response-header">
+                        <span className="response-role">{response.role}</span>
+                        <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="response-message">{response.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-responses">No messages yet. Start the conversation!</p>
+                )}
+              </div>
+            </div>
+          )
+        )}
       </div>
+      {/* Optionally, show a warning if in manage mode but cannot manage */}
+      {mode === 'manage' && !canManage && (
+        <div className="manage-warning" style={{ color: 'red', marginTop: 10 }}>
+          You do not have permission to manage this ticket.
+        </div>
+      )}
     </Modal>
   );
 };

@@ -32,6 +32,7 @@ import InvoiceManagement from './Pages/CRM/InvoiceManagement';
 import Reports from './Pages/CRM/Reports';
 import CreateTicket from './Pages/CRM/CreateTicket';
 import SalesManagement from './Pages/CRM/SalesManagement';
+import Modal from 'react-modal';
 
 /**
  * App Component - Main routing setup for the CRM application
@@ -42,6 +43,7 @@ import SalesManagement from './Pages/CRM/SalesManagement';
  * @returns {JSX.Element} The router configuration with all app routes
  */
 const App = () => {
+  Modal.setAppElement('#root');
   return (
     <ThemeProvider>
       <NotificationProvider>

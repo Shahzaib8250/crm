@@ -157,6 +157,12 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const [roles, setRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [rolesError, setRolesError] = useState('');
+  // Add state for the two ticket tabs
+  const [ticketTab, setTicketTab] = useState('assigned');
+  const [assignedTickets, setAssignedTickets] = useState([]);
+  const [createdTickets, setCreatedTickets] = useState([]);
+  const [manageTicketError, setManageTicketError] = useState('');
+  const [modalMode, setModalMode] = useState('view'); // 'view' or 'manage'
 
   // Ref to hold the current ticketsLoading state to prevent stale closures in useCallback
   const ticketsLoadingRef = useRef(ticketsLoading);
@@ -2248,7 +2254,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                 <TicketList
                   tickets={(tickets || [])}
                   onSelectTicket={() => { /* Admin doesn't need to select individual tickets for detail */ } }
-                  onManageTicket={() => { /* Admin doesn't manage tickets like SuperAdmin */ } }
+                  onManageTicket={handleOpenTicketModal}
                   onDeleteTicket={ticket => handleDeleteTicket(ticket)}
                   onViewTicket={handleViewTicket}
                   userRole="admin"
@@ -2936,20 +2942,36 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   // Handler for submitting the ticket
   const handleSubmitTicket = async () => {
+    // Validation for required fields
+    const subject = ticketForm.subject?.trim();
+    const category = ticketForm.category?.trim() || 'General';
+    const description = ticketForm.description?.trim();
+    const name = currentUser?.profile?.fullName?.trim() || '';
+    const email = currentUser?.email?.trim() || '';
+    const department = currentUser?.profile?.department?.trim() || 'General';
+
+    if (!subject || !category || !description || !name || !email || !department) {
+      showAlert('Please fill in all required fields (subject, category, description, name, email, department).', 'error');
+      return;
+    }
+
+    const payload = {
+      subject,
+      category,
+      message: description,
+      priority: ticketForm.priority,
+      name,
+      email,
+      department,
+      relatedTo: category
+    };
+    console.log('Submitting ticket with payload:', JSON.stringify(payload, null, 2));
+
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/api/tickets`,
-        {
-          subject: ticketForm.subject,
-          category: ticketForm.category,
-          message: ticketForm.description, // Changed from description to message
-          priority: ticketForm.priority,
-          name: currentUser?.profile?.fullName || '',
-          email: currentUser?.email || '',
-          department: currentUser?.profile?.department || '',
-          relatedTo: ticketForm.category
-        },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       showAlert('Ticket submitted successfully!', 'success');
@@ -2958,7 +2980,22 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       fetchTickets();
     } catch (error) {
       console.error('Failed to submit ticket:', error);
-      showAlert(error.response?.data?.message || 'Failed to submit ticket', 'error');
+      if (error.response) {
+        console.error('Backend error response:', JSON.stringify(error.response.data, null, 2));
+        const details = error.response.data.details;
+        if (details && Array.isArray(details) && details.length > 0) {
+          showAlert(`${error.response.data.message}: ${details.join(', ')}`, 'error');
+        } else {
+          showAlert(
+            error.response.data.message ||
+            JSON.stringify(error.response.data) ||
+            'Failed to submit ticket (see console for details)',
+            'error'
+          );
+        }
+      } else {
+        showAlert(error.message || 'Failed to submit ticket', 'error');
+      }
     }
   };
 
@@ -3043,8 +3080,11 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     };
   }, [showAlert]);
 
-  const handleViewTicket = useCallback((ticket) => {
+  // Unified handler to open the ticket modal for any ticket
+  const handleOpenTicketModal = useCallback((ticket, mode = 'view') => {
+    console.log('[AdminDashboard] handleOpenTicketModal called with:', ticket, 'mode:', mode);
     setSelectedTicket(ticket);
+    setModalMode(mode);
     setShowViewTicketModal(true);
   }, []);
 
@@ -3054,10 +3094,17 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   }, []);
 
   const handleDeleteTicket = async (ticket) => {
-    // Only allow deletion if status is 'Open' (case-insensitive)
+    // Only allow deletion if status is 'Open' (case-insensitive) and admin is assigned and not an admin ticket
     if (!ticket || typeof ticket.status !== 'string' || ticket.status.toLowerCase() !== 'open') {
       showAlert("You don't have permission to delete this ticket", 'error');
       return;
+    }
+    // For admin, check assignment and isAdminTicket
+    if (currentUser?.role === 'admin') {
+      if (ticket.isAdminTicket || String(ticket.adminId?._id || ticket.adminId) !== String(currentUser.id)) {
+        showAlert("Admins can only delete tickets assigned to them from users.", 'error');
+        return;
+      }
     }
     try {
       const token = localStorage.getItem('token');
@@ -3065,7 +3112,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       showAlert('Ticket deleted successfully', 'success');
-      // fetchTickets(); // Removed: WebSocket should handle update
+      // fetchTickets(); // WebSocket should handle update
     } catch (error) {
       console.error('Failed to delete ticket:', error);
       showAlert(error.response?.data?.message || 'Failed to delete ticket', 'error');
@@ -3178,8 +3225,134 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     }
   }, [openDialog]);
 
+  // Fetch assigned tickets (from users)
+  const fetchAssignedTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    setTicketsError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/tickets/admin/assigned`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAssignedTickets(response.data);
+    } catch (error) {
+      setTicketsError('Failed to fetch assigned tickets');
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  // Fetch created tickets (to superadmin)
+  const fetchCreatedTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    setTicketsError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/tickets/admin/created`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCreatedTickets(response.data);
+    } catch (error) {
+      setTicketsError('Failed to fetch created tickets');
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  // Fetch both ticket lists on mount or when switching tabs
+  useEffect(() => {
+    if (activeTab === 'tickets') {
+      fetchAssignedTickets();
+      fetchCreatedTickets();
+    }
+  }, [activeTab, fetchAssignedTickets, fetchCreatedTickets]);
+
+  // Ticket tab UI and rendering
+  function renderTicketsSection() {
+    if (!currentUser || !currentUser._id) {
+      return <div>Loading your profile...</div>;
+    }
+    return (
+      <div className="admin-tickets-section">
+        {/* Show error message if admin tries to manage their own ticket */}
+        {manageTicketError && (
+          <div className="error-message" style={{ color: 'red', margin: '10px 0' }}>
+            {manageTicketError}
+          </div>
+        )}
+        <div className="ticket-tabs">
+          <button
+            className={ticketTab === 'assigned' ? 'active' : ''}
+            onClick={() => setTicketTab('assigned')}
+          >
+            Tickets Assigned to Me
+          </button>
+          <button
+            className={ticketTab === 'created' ? 'active' : ''}
+            onClick={() => setTicketTab('created')}
+          >
+            Tickets I Created (to Superadmin)
+          </button>
+        </div>
+        <div className="ticket-tab-content">
+          {ticketsLoading ? (
+            <div>Loading tickets...</div>
+          ) : ticketsError ? (
+            <div className="error-message">{ticketsError}</div>
+          ) : ticketTab === 'assigned' ? (
+            <TicketList
+              tickets={assignedTickets}
+              onViewTicket={handleViewTicket}
+              onDeleteTicket={handleDeleteTicket}
+              onManageTicket={handleManageTicket}
+              userRole="admin"
+              onForwardTicket={handleForwardTicket}
+              currentUserId={currentUser._id}
+            />
+          ) : (
+            <TicketList
+              tickets={createdTickets}
+              onViewTicket={handleViewTicket}
+              onDeleteTicket={handleDeleteTicket}
+              onManageTicket={handleManageTicket}
+              userRole="admin"
+              onForwardTicket={handleForwardTicket}
+              currentUserId={currentUser._id}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Separate handlers for view and manage to enforce correct mode
+  const handleViewTicket = useCallback((ticket) => {
+    handleOpenTicketModal(ticket, 'view');
+  }, [handleOpenTicketModal]);
+
+  const handleManageTicket = useCallback((ticket) => {
+    handleOpenTicketModal(ticket, 'manage');
+  }, [handleOpenTicketModal]);
+
   return (
     <div className="admin-dashboard">
+      {manageTicketError && (
+        <div className="error-message" style={{
+          color: 'white',
+          background: 'red',
+          padding: '12px',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '1.2em',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          zIndex: 9999
+        }}>
+          {manageTicketError}
+        </div>
+      )}
       <div className="dashboard-frame">
         {/* Main Dashboard Area */}
         <div className="dashboard-container">
@@ -3744,14 +3917,28 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       )}
 
       {/* Ticket Details Modal */}
+      {console.log('[AdminDashboard] Render: showViewTicketModal:', showViewTicketModal, 'selectedTicket:', selectedTicket, 'modalMode:', modalMode)}
       {showViewTicketModal && selectedTicket && (
-        <TicketDetailsModal
-          isOpen={showViewTicketModal}
-          onClose={handleCloseViewModal}
-          ticket={selectedTicket}
-          userRole="admin" // Explicitly set role for admin dashboard
-          onForwardTicket={handleForwardTicket}
-        />
+        (() => {
+          // Calculate canManage for the selected ticket and current user
+          let canManage = false;
+          if (selectedTicket && currentUser) {
+            canManage = (
+              String(selectedTicket.adminId?._id || selectedTicket.adminId) === String(currentUser._id || currentUser.id)
+            );
+          }
+          return (
+            <TicketDetailsModal
+              isOpen={showViewTicketModal}
+              onClose={handleCloseViewModal}
+              ticket={selectedTicket}
+              userRole="admin"
+              onResponseAdded={fetchTickets}
+              canManage={canManage}
+              mode={modalMode}
+            />
+          );
+        })()
       )}
 
       {/* Quotation Form Dialog */}
