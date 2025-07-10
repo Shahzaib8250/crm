@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
   email: { 
     type: String, 
     required: true, 
-    unique: true 
+    unique: true // Enforce unique emails at the schema level
   },
   password: { 
     type: String, 
@@ -190,5 +190,8 @@ const userSchema = new mongoose.Schema({
 }, { 
   timestamps: true 
 });
+
+// Ensure a unique index on email for existing collections
+userSchema.index({ email: 1 }, { unique: true });
 
 module.exports = mongoose.model('User', userSchema); 

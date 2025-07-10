@@ -12,7 +12,7 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
   const [currentResponses, setCurrentResponses] = useState([]);
-  const [status, setStatus] = useState(ticket.status);
+  const [status, setStatus] = useState(ticket && ticket.status ? ticket.status : 'Open');
 
   useEffect(() => {
     if (isOpen && ticket) {
@@ -185,82 +185,89 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
             {alert.message}
           </div>
         )}
-        {mode === 'manage' && canManage ? (
-          <form className="manage-form-section" onSubmit={handleSubmitResponse}>
-            <div className="form-group">
-              <label><strong>Title:</strong></label>
-              <input type="text" value={ticket.subject} readOnly disabled />
-            </div>
-            <div className="form-group">
-              <label><strong>Description:</strong></label>
-              <textarea value={ticket.message || ticket.description || ''} readOnly disabled rows={3} />
-            </div>
-            <div className="form-group">
-              <label><strong>Status:</strong></label>
-              <select
-                value={status}
-                onChange={handleStatusChange}
-                disabled={!canManage || loading}
-              >
-                <option value="Open">Open</option>
-                <option value="Working">Working</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Closed">Closed</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label><strong>Add Response:</strong></label>
-              <textarea
-                value={newResponse}
-                onChange={e => setNewResponse(e.target.value)}
-                placeholder="Type your response..."
-                rows={4}
-                disabled={!canManage}
-              />
-            </div>
-            <button type="submit" className="submit-response-btn" disabled={loading || !canManage}>
-              {loading ? 'Sending...' : 'Send Response'}
-            </button>
-            <div className="responses-list">
-              <h3>Conversation</h3>
-              {currentResponses.length > 0 ? (
-                currentResponses.map((response, index) => (
-                  <div key={index} className="response-item">
-                    <div className="response-header">
-                      <span className="response-role">{response.role}</span>
-                      <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
-                    </div>
-                    <p className="response-message">{response.message}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="no-responses">No messages yet. Start the conversation!</p>
-              )}
-            </div>
-          </form>
-        ) : (
-          <div className="ticket-details-section">
-            <p><strong>Subject:</strong> {ticket.subject}</p>
-            <p><strong>Description:</strong> {ticket.message || ticket.description || ''}</p>
-            <p><strong>Status:</strong> {ticket.status}</p>
-            <p><strong>Priority:</strong> {ticket.priority}</p>
-            <div className="responses-list">
-              <h3>Conversation</h3>
-              {currentResponses.length > 0 ? (
-                currentResponses.map((response, index) => (
-                  <div key={index} className="response-item">
-                    <div className="response-header">
-                      <span className="response-role">{response.role}</span>
-                      <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
-                    </div>
-                    <p className="response-message">{response.message}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="no-responses">No messages yet. Start the conversation!</p>
-              )}
-            </div>
+        {/* Fallback if ticket is null or undefined */}
+        {!ticket ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>
+            No ticket selected or ticket data unavailable.
           </div>
+        ) : (
+          mode === 'manage' && canManage ? (
+            <form className="manage-form-section" onSubmit={handleSubmitResponse}>
+              <div className="form-group">
+                <label><strong>Title:</strong></label>
+                <input type="text" value={ticket.subject || ''} readOnly disabled />
+              </div>
+              <div className="form-group">
+                <label><strong>Description:</strong></label>
+                <textarea value={ticket.message || ticket.description || ''} readOnly disabled rows={3} />
+              </div>
+              <div className="form-group">
+                <label><strong>Status:</strong></label>
+                <select
+                  value={status}
+                  onChange={handleStatusChange}
+                  disabled={!canManage || loading}
+                >
+                  <option value="Open">Open</option>
+                  <option value="Working">Working</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label><strong>Add Response:</strong></label>
+                <textarea
+                  value={newResponse}
+                  onChange={e => setNewResponse(e.target.value)}
+                  placeholder="Type your response..."
+                  rows={4}
+                  disabled={!canManage}
+                />
+              </div>
+              <button type="submit" className="submit-response-btn" disabled={loading || !canManage}>
+                {loading ? 'Sending...' : 'Send Response'}
+              </button>
+              <div className="responses-list">
+                <h3>Conversation</h3>
+                {currentResponses.length > 0 ? (
+                  currentResponses.map((response, index) => (
+                    <div key={index} className="response-item">
+                      <div className="response-header">
+                        <span className="response-role">{response.role}</span>
+                        <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="response-message">{response.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-responses">No messages yet. Start the conversation!</p>
+                )}
+              </div>
+            </form>
+          ) : (
+            <div className="ticket-details-section">
+              <p><strong>Subject:</strong> {ticket.subject || ''}</p>
+              <p><strong>Description:</strong> {ticket.message || ticket.description || ''}</p>
+              <p><strong>Status:</strong> {ticket.status || ''}</p>
+              <p><strong>Priority:</strong> {ticket.priority || ''}</p>
+              <div className="responses-list">
+                <h3>Conversation</h3>
+                {currentResponses.length > 0 ? (
+                  currentResponses.map((response, index) => (
+                    <div key={index} className="response-item">
+                      <div className="response-header">
+                        <span className="response-role">{response.role}</span>
+                        <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="response-message">{response.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-responses">No messages yet. Start the conversation!</p>
+                )}
+              </div>
+            </div>
+          )
         )}
       </div>
       {/* Optionally, show a warning if in manage mode but cannot manage */}
