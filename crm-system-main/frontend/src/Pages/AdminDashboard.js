@@ -921,7 +921,9 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     setFormData({
       email: user.email,
       password: '',
-      profile: { ...user.profile }
+      profile: { ...user.profile },
+      productAccessList: user.productAccessList || user.productAccess || [],
+      // ... copy other fields as needed ...
     });
     setFormErrors({});
     setOpenDialog(true);
@@ -3630,7 +3632,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
               </div>
               <div className="form-group">
                 <label>Product Access *</label>
-                {formData.productAccessList.map((access, idx) => {
+                {(formData.productAccessList || []).map((access, idx) => {
                   const isLocked = access.locked;
                   return (
                     <div key={idx} style={{ marginBottom: '16px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
