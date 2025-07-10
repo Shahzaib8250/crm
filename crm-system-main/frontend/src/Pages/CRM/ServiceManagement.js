@@ -70,8 +70,8 @@ const ServiceManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       addNotification(`Service ${selectedService ? 'updated' : 'created'} successfully`, 'success');
-      setOpenDialog(false);
-      setSelectedService(null);
+    setOpenDialog(false);
+    setSelectedService(null);
       setFormData({ name: '', description: '', price: 0, category: 'Other', icon: '', features: [], duration: { value: '', unit: 'one-time' } });
       fetchServices();
     } catch (err) {
