@@ -6,7 +6,7 @@ import websocketService from '../../../services/websocketService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded, onForwardTicket, canManage = true, mode = 'view' }) => {
+const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded, onForwardTicket, canManage = true, mode = 'view', setModalAlert }) => {
   console.log('[TicketDetailsModal] Rendered with:', { isOpen, ticket, userRole, canManage, mode });
   const [newResponse, setNewResponse] = useState('');
   const [loading, setLoading] = useState(false);
@@ -166,6 +166,23 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
     }
   };
 
+  // Add setModalAlert to props
+  const handleForwardToSuperAdmin = async (ticket) => {
+    if (!onForwardTicket) return;
+    try {
+      await onForwardTicket(ticket, (msg, type = 'success') => {
+        setAlert({ show: true, message: msg, type });
+        if (setModalAlert) setModalAlert(msg, type);
+        setTimeout(() => setAlert({ show: false, message: '', type: 'success' }), 3000);
+      });
+    } catch (err) {
+      const msg = err?.message || 'Failed to forward ticket';
+      setAlert({ show: true, message: msg, type: 'error' });
+      if (setModalAlert) setModalAlert(msg, 'error');
+      setTimeout(() => setAlert({ show: false, message: '', type: 'success' }), 3000);
+    }
+  };
+
   // Determine if editing should be disabled for admin
   const isSuperAdminTicket = ticket && (ticket.forwardedToSuperAdmin || ticket.isAdminTicket);
   const isAdmin = userRole === 'admin';
@@ -245,6 +262,18 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
               <button type="submit" className="submit-response-btn" disabled={loading || !canManage}>
                 {loading ? 'Sending...' : 'Send Response'}
               </button>
+              {/* Forward to Super Admin button logic */}
+              {userRole === 'admin' && !ticket.isAdminTicket && !ticket.forwardedToSuperAdmin && canManage && (
+                <button
+                  type="button"
+                  className="forward-superadmin-btn"
+                  style={{ marginTop: 12, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, cursor: 'pointer' }}
+                  onClick={() => handleForwardToSuperAdmin(ticket)}
+                  disabled={loading}
+                >
+                  Forward to Super Admin
+                </button>
+              )}
               <div className="responses-list">
                 <h3>Conversation</h3>
                 {currentResponses.length > 0 ? (

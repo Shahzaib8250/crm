@@ -163,6 +163,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const [createdTickets, setCreatedTickets] = useState([]);
   const [manageTicketError, setManageTicketError] = useState('');
   const [modalMode, setModalMode] = useState('view'); // 'view' or 'manage'
+  // Add a state for modal alert
+  const [modalAlert, setModalAlert] = useState(null);
 
   // Ref to hold the current ticketsLoading state to prevent stale closures in useCallback
   const ticketsLoadingRef = useRef(ticketsLoading);
@@ -3119,23 +3121,24 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     }
   };
 
-  const handleForwardTicket = async (ticket) => {
+  const handleForwardTicket = async (ticket, alertCallback) => {
     if (!ticket || ticket.forwardedToSuperAdmin) {
+      if (alertCallback) alertCallback("This ticket has already been forwarded to super admin", 'error');
       showAlert("This ticket has already been forwarded to super admin", 'error');
       return;
     }
-    
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/api/tickets/${ticket._id || ticket.id}/forward`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (alertCallback) alertCallback('Ticket forwarded to super admin successfully', 'success');
       showAlert('Ticket forwarded to super admin successfully', 'success');
-      // Refresh tickets to update the forwarded status
       fetchTickets();
     } catch (error) {
-      console.error('Failed to forward ticket:', error);
-      showAlert(error.response?.data?.message || 'Failed to forward ticket', 'error');
+      const msg = error.response?.data?.message || 'Failed to forward ticket';
+      if (alertCallback) alertCallback(msg, 'error');
+      showAlert(msg, 'error');
     }
   };
 
@@ -3936,6 +3939,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
               onResponseAdded={fetchTickets}
               canManage={canManage}
               mode={modalMode}
+              setModalAlert={setModalAlert}
+              onForwardTicket={handleForwardTicket}
             />
           );
         })()
