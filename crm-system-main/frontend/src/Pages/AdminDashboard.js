@@ -3302,9 +3302,9 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
           ) : ticketTab === 'assigned' ? (
             <TicketList
               tickets={assignedTickets}
-              onViewTicket={handleOpenTicketModal}
+              onViewTicket={handleViewTicket}
               onDeleteTicket={handleDeleteTicket}
-              onManageTicket={handleOpenTicketModal}
+              onManageTicket={handleManageTicket}
               userRole="admin"
               onForwardTicket={handleForwardTicket}
               currentUserId={currentUser._id}
@@ -3312,9 +3312,9 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
           ) : (
             <TicketList
               tickets={createdTickets}
-              onViewTicket={handleOpenTicketModal}
+              onViewTicket={handleViewTicket}
               onDeleteTicket={handleDeleteTicket}
-              onManageTicket={handleOpenTicketModal}
+              onManageTicket={handleManageTicket}
               userRole="admin"
               onForwardTicket={handleForwardTicket}
               currentUserId={currentUser._id}
@@ -3325,11 +3325,14 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     );
   }
 
-  // Remove restrictive logic from handleViewTicket
+  // Separate handlers for view and manage to enforce correct mode
   const handleViewTicket = useCallback((ticket) => {
-    setSelectedTicket(ticket);
-    setShowViewTicketModal(true);
-  }, []);
+    handleOpenTicketModal(ticket, 'view');
+  }, [handleOpenTicketModal]);
+
+  const handleManageTicket = useCallback((ticket) => {
+    handleOpenTicketModal(ticket, 'manage');
+  }, [handleOpenTicketModal]);
 
   return (
     <div className="admin-dashboard">
