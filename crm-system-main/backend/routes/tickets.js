@@ -216,7 +216,7 @@ router.get('/', authenticateToken, authorizeRole('superadmin'), async (req, res)
   try {
     console.log('GET /api/tickets called by user:', req.user);
     const tickets = await Ticket.find({ forwardedToSuperAdmin: true })
-      .populate('adminId', 'email profile.fullName')
+      .populate('adminId', 'email profile.fullName enterprise.companyName')
       .populate('submittedBy', 'email profile.fullName enterprise.companyName')
       .populate('forwardedBy', 'email profile.fullName enterprise.companyName')
       .sort({ createdAt: -1 });
@@ -256,8 +256,8 @@ router.get('/admin', authenticateToken, authorizeRole('admin', 'superadmin'), as
         { enterpriseId: enterpriseId }
       ]
     })
-      .populate('submittedBy', 'email profile.fullName')
-      .populate('adminId', 'email profile.fullName')
+      .populate('submittedBy', 'email profile.fullName enterprise.companyName')
+      .populate('adminId', 'email profile.fullName enterprise.companyName')
       .sort({ createdAt: -1 });
     res.json(tickets);
   } catch (error) {
@@ -279,7 +279,8 @@ router.get('/user', authenticateToken, async (req, res) => {
     }
     console.log('GET /api/tickets/user called by user:', req.user.id);
     const tickets = await Ticket.find({ submittedBy: req.user.id, isAdminTicket: false })
-      .populate('adminId', 'email profile.fullName')
+      .populate('adminId', 'email profile.fullName enterprise.companyName')
+      .populate('submittedBy', 'email profile.fullName enterprise.companyName')
       .sort({ createdAt: -1 });
     console.log('Tickets found for user:', req.user.id, 'Count:', tickets.length);
     res.json(tickets);
@@ -651,15 +652,45 @@ router.delete('/:id', authenticateToken, authorizeRole('superadmin', 'admin'), a
   try {
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
+      console.log('[DELETE /api/tickets/:id] Ticket not found for id:', req.params.id);
       return res.status(404).json({ message: 'Ticket not found' });
     }
     // Permission check for admin only
     if (req.user.role === 'admin') {
-      if (ticket.isAdminTicket || String(ticket.adminId) !== String(req.user.id)) {
-        return res.status(403).json({ message: 'Admins can only delete tickets assigned to them from users.' });
+      const adminIdRaw = ticket.adminId;
+      const adminIdStr = adminIdRaw ? String(adminIdRaw) : 'undefined';
+      const userIdStr = String(req.user.id);
+      const isAdminTicket = ticket.isAdminTicket;
+      const isForwarded = ticket.forwardedToSuperAdmin;
+      const adminIdType = typeof adminIdRaw;
+      const userIdType = typeof req.user.id;
+      const canDelete = !isAdminTicket && !isForwarded && adminIdStr === userIdStr;
+      console.log('[DELETE /api/tickets/:id] Debug:', {
+        ticketId: ticket._id,
+        adminIdRaw,
+        adminIdStr,
+        adminIdType,
+        userIdStr,
+        userIdType,
+        isAdminTicket,
+        isForwarded,
+        canDelete
+      });
+      if (isAdminTicket) {
+        console.log('[DELETE /api/tickets/:id] Denied: isAdminTicket is true');
+        return res.status(403).json({ message: 'Admins cannot delete tickets created by admins.' });
+      }
+      if (isForwarded) {
+        console.log('[DELETE /api/tickets/:id] Denied: forwardedToSuperAdmin is true');
+        return res.status(403).json({ message: 'Admins cannot delete tickets forwarded to super admin.' });
+      }
+      if (adminIdStr !== userIdStr) {
+        console.log('[DELETE /api/tickets/:id] Denied: adminId does not match req.user.id');
+        return res.status(403).json({ message: 'Admins can only delete tickets assigned to them.' });
       }
     }
     await ticket.deleteOne();
+    console.log('[DELETE /api/tickets/:id] Ticket deleted successfully:', ticket._id);
     res.json({ message: 'Ticket deleted successfully' });
   } catch (error) {
     console.error('Error deleting ticket:', error);

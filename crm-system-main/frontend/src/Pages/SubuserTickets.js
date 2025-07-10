@@ -3,6 +3,7 @@ import axios from 'axios';
 import { getUserInfo } from '../services/authService';
 import './UserDashboard.css';
 import Modal from 'react-modal';
+import TicketDetailsModal from './Complaints/Components/TicketDetailsModal';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -57,7 +58,7 @@ const SubuserTickets = () => {
       if (err.response && err.response.status === 401) {
         setError('Session expired or unauthorized. Please log in again.');
       } else {
-        setError('Failed to load tickets');
+      setError('Failed to load tickets');
       }
     } finally {
       setLoading(false);
@@ -125,7 +126,7 @@ const SubuserTickets = () => {
       if (err.response && err.response.status === 401) {
         alert('Session expired or unauthorized. Please log in again.');
       } else {
-        alert(err.response?.data?.message || 'Failed to submit ticket');
+      alert(err.response?.data?.message || 'Failed to submit ticket');
       }
     } finally {
       setSubmitting(false);
@@ -273,81 +274,54 @@ const SubuserTickets = () => {
       ) : tickets.length === 0 ? (
         <div>No tickets found. Create your first ticket above.</div>
       ) : (
-        <div className="tickets-list">
-          {tickets.map(ticket => (
-            <div key={ticket._id} className="ticket-item" onClick={() => handleOpenModal(ticket)}>
-              <div className="ticket-subject">{ticket.subject}</div>
-              <div className="ticket-meta">
-                Status: <b>{ticket.status}</b> | 
-                Priority: <b>{ticket.priority}</b> | 
-                Created: {new Date(ticket.createdAt).toLocaleDateString()}
-              </div>
-              {ticket.responses && ticket.responses.length > 0 && (
-                <div className="ticket-responses">
-                  {ticket.responses.length} response{ticket.responses.length !== 1 ? 's' : ''}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <table className="tickets-table">
+          <thead>
+            <tr>
+              <th>Ticket No</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Created On</th>
+              <th>Assigned To</th>
+              {/* Actions column removed for user dashboard */}
+            </tr>
+          </thead>
+          <tbody>
+            {tickets.map(ticket => {
+              // Determine creator name
+              let creatorName = ticket.submittedBy?.profile?.fullName || ticket.name || 'Unknown';
+              // Determine assigned to
+              let assignedTo = 'Unassigned';
+              if (ticket.isAdminTicket || ticket.forwardedToSuperAdmin) {
+                assignedTo = 'Superadmin';
+              } else if (ticket.adminId && ticket.adminId.profile && ticket.adminId.profile.fullName) {
+                assignedTo = ticket.adminId.profile.fullName;
+              }
+              return (
+                <tr key={ticket._id} className="ticket-item-row" onClick={() => handleOpenModal(ticket)} style={{ cursor: 'pointer' }}>
+                  <td>{ticket.ticketNo || ''}</td>
+                  <td>{ticket.subject}</td>
+                  <td>{ticket.status}</td>
+                  <td>{ticket.priority}</td>
+                  <td>{creatorName}</td>
+                  <td>{assignedTo}</td>
+                  {/* No actions column for user dashboard */}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
 
       {/* Ticket Detail Modal */}
-      <Modal
+      <TicketDetailsModal
         isOpen={showModal && selectedTicket && !selectedTicket.isAdminTicket}
-        onRequestClose={handleCloseModal}
-        contentLabel="Manage Ticket"
-        className="Modal"
-        overlayClassName="Overlay"
-      >
-        {selectedTicket && !selectedTicket.isAdminTicket && (
-          <div className="modal-content">
-            <h3>Manage Ticket: {selectedTicket.subject}</h3>
-            <p><strong>Ticket No:</strong> {selectedTicket.ticketNo || 'TKT-000'}</p>
-            <p><strong>Status:</strong> {selectedTicket.status}</p>
-            <p><strong>Priority:</strong> {selectedTicket.priority}</p>
-            <p><strong>Created By:</strong> {selectedTicket.name}</p>
-            <hr/>
-            <form onSubmit={handleSubmitManagementForm}>
-              <div className="form-group">
-                <label htmlFor="status">Update Status:</label>
-                <select
-                  id="status"
-                  name="status"
-                  value={manageFormData.status || selectedTicket.status}
-                  onChange={handleManagementFormChange}
-                  className="form-control"
-                >
-                  <option value="Open">Open</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label htmlFor="message">Add Response:</label>
-                <textarea
-                  id="message"
-                  name="message"
-                  value={manageFormData.message}
-                  onChange={handleManagementFormChange}
-                  placeholder="Type your response here..."
-                  rows="4"
-                  className="form-control"
-                ></textarea>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={handleCloseModal}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-      </Modal>
+        onClose={handleCloseModal}
+        ticket={selectedTicket}
+        userRole="user"
+        mode="view"
+        onResponseAdded={fetchTickets}
+      />
     </div>
   );
 };

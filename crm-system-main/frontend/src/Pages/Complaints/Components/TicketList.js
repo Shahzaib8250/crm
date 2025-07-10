@@ -84,52 +84,49 @@ const TicketList = ({ tickets, onSelectTicket, onManageTicket, onDeleteTicket, o
             const adminIdValue = ticket.adminId?._id || ticket.adminId;
             const canManage = userRole === 'superadmin' || (userRole === 'admin' && !ticket.isAdminTicket && ticket.adminId && String(adminIdValue) === String(currentUserId));
             console.log('[TicketList] Ticket:', ticket.ticketNo, 'adminId:', adminIdValue, 'currentUserId:', currentUserId, 'canManage:', canManage);
+
+            // Determine creator name
+            let creatorName = ticket.submittedBy?.profile?.fullName || ticket.name || 'Unknown';
+            // Determine assigned to
+            let assignedTo = 'Unassigned';
+            if (ticket.isAdminTicket || ticket.forwardedToSuperAdmin) {
+              assignedTo = 'Superadmin';
+            } else if (ticket.adminId && ticket.adminId.profile && ticket.adminId.profile.fullName) {
+              assignedTo = ticket.adminId.profile.fullName;
+            }
             return (
-              <div 
-                key={ticket._id} 
-                className="ticket-row"
-                // onClick={() => onSelectTicket(ticket)} // Row click might interfere with button clicks
-              >
-                <div className="ticket-cell ticket-id">{ticket.ticketNo || 'TKT-000'}</div>
-                <div className="ticket-cell ticket-subject">{ticket.subject}</div>
-                <div className="ticket-cell ticket-priority">
-                  <span className={`priority-badge ${getPriorityClass(ticket.priority)}`}>
-                    {ticket.priority}
-                  </span>
-                </div>
-                <div className="ticket-cell ticket-status">
-                  <span className={`status-badge ${getStatusClass(ticket.status)}`}>
-                    {ticket.status}
-                  </span>
-                </div>
-                <div className="ticket-cell ticket-date">{formatDate(ticket.createdAt)}</div>
-                <div className="ticket-cell ticket-assigned">
-                  {(ticket.isAdminTicket || ticket.forwardedToSuperAdmin) ? (
-                    <span className="assigned-superadmin">Superadmin</span>
-                  ) : ticket.adminId ? (
-                    <div className="assigned-user">
-                      <div className="user-initial">
-                        {ticket.adminId.profile?.fullName ? ticket.adminId.profile.fullName.charAt(0) : '?'}
-                      </div>
-                      <span>{ticket.adminId.profile?.fullName || 'Unknown'}</span>
-                    </div>
-                  ) : (
-                    <span className="unassigned">Unassigned</span>
-                  )}
-                </div>
-                <div className="ticket-cell ticket-enterprise">
-                  {ticket.submittedBy?.enterprise?.companyName || 'N/A'}
-                </div>
-                <div className="ticket-cell ticket-actions">
-                  <button
-                    className="view-ticket-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
+            <div 
+              key={ticket._id} 
+              className="ticket-row"
+              // onClick={() => onSelectTicket(ticket)} // Row click might interfere with button clicks
+            >
+              <div className="ticket-cell ticket-id">{ticket.ticketNo || 'TKT-000'}</div>
+              <div className="ticket-cell ticket-subject">{ticket.subject}</div>
+              <div className="ticket-cell ticket-priority">
+                <span className={`priority-badge ${getPriorityClass(ticket.priority)}`}>
+                  {ticket.priority}
+                </span>
+              </div>
+              <div className="ticket-cell ticket-status">
+                <span className={`status-badge ${getStatusClass(ticket.status)}`}>
+                  {ticket.status}
+                </span>
+              </div>
+              <div className="ticket-cell ticket-date">{creatorName}</div>
+              <div className="ticket-cell ticket-assigned">{assignedTo}</div>
+              <div className="ticket-cell ticket-enterprise">
+                {ticket.submittedBy?.enterprise?.companyName || 'N/A'}
+              </div>
+              <div className="ticket-cell ticket-actions">
+                <button
+                  className="view-ticket-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
                       onViewTicket(ticket, 'view');
-                    }}
-                  >
-                    View
-                  </button>
+                  }}
+                >
+                  View
+                </button>
                   <button
                     className="manage-ticket-btn"
                     onClick={(e) => {
@@ -146,15 +143,15 @@ const TicketList = ({ tickets, onSelectTicket, onManageTicket, onDeleteTicket, o
                     Manage
                   </button>
                   {canManage && (
-                    <button 
-                      className="delete-ticket-btn"
-                      onClick={(e) => {
+                <button 
+                  className="delete-ticket-btn"
+                  onClick={(e) => {
                         e.stopPropagation();
                         onDeleteTicket(ticket);
-                      }}
-                    >
-                      Delete
-                    </button>
+                  }}
+                >
+                  Delete
+                </button>
                   )}
                 </div>
               </div>
