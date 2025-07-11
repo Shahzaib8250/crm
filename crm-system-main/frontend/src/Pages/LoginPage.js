@@ -19,18 +19,14 @@ const LoginPage = () => {
       const result = await login(email, password);
 
       if (result.success) {
-        // Login successful - navigate based on role
+        // Only allow admin login from this form
         const { role } = result.data;
-        
         if (role === 'admin') {
-        navigate('/admin');
-        } else if (role === 'user') {
-        navigate('/user');
-      } else {
-        setError('Unknown user role');
+          navigate('/admin');
+        } else {
+          setError('You are not authorized to log in here. Please use the correct login page for your role.');
         }
       } else {
-        // Login failed
         setError(result.error);
       }
     } catch (err) {
@@ -46,7 +42,7 @@ const LoginPage = () => {
       <Box sx={{ mt: 8 }}>
         <Paper elevation={3} sx={{ padding: 4 }}>
           <Typography variant="h4" align="center" gutterBottom>
-            Admin/User Login
+            Admin Login
           </Typography>
           
           {error && (

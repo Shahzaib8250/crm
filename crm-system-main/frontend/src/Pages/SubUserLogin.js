@@ -27,12 +27,12 @@ const SubUserLogin = () => {
           const user = await res.json();
           localStorage.setItem('user', JSON.stringify(user));
         }
-        // Login successful - navigate based on role
+        // Only allow user login from this form
         const { role } = result.data;
         if (role === 'user') {
           navigate('/user');
         } else {
-          setError('You are not authorized as a subuser.');
+          setError('You are not authorized to log in here. Please use the correct login page for your role.');
         }
       } else {
         setError(result.error);
@@ -50,7 +50,7 @@ const SubUserLogin = () => {
       <Box sx={{ mt: 8 }}>
         <Paper elevation={3} sx={{ padding: 4 }}>
           <Typography variant="h4" align="center" gutterBottom>
-            Subuser Login
+            User Login
           </Typography>
           {error && (
             <Typography color="error" align="center" gutterBottom>

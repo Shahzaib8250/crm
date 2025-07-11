@@ -26,6 +26,12 @@ const SuperAdminLogin = () => {
       });
 
       if (response.data && response.data.token) {
+        // Check role in response if available
+        if (response.data.role && response.data.role !== 'superadmin') {
+          setError('You are not authorized to log in here. Please use the correct login page for your role.');
+          setLoading(false);
+          return;
+        }
         // Store token and user data
         localStorage.setItem('token', response.data.token);
         

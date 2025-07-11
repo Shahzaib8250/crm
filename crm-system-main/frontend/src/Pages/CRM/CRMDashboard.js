@@ -5,6 +5,7 @@ import ThemeToggle from '../../Components/ThemeToggle';
 import axios from 'axios';
 import './CRM.css';
 import { useNotification } from '../../utils/NotificationContext';
+import { getUserInfo, logout } from '../../services/authService';
 
 const moduleBlocks = [
   [
@@ -17,7 +18,6 @@ const moduleBlocks = [
   ],
   [
     { label: 'Reports', route: 'reports', icon: '📊' },
-    { label: 'Create Ticket', route: 'create-ticket', icon: '🎫' },
   ],
   [
     { label: 'Customers', route: 'customers', icon: '👥' },
@@ -33,7 +33,6 @@ const sidebarLinks = [
   { label: 'Quotations', route: 'quotations', icon: '💼' },
   { label: 'Invoices', route: 'invoices', icon: '🧾' },
   { label: 'Reports', route: 'reports', icon: '📊' },
-  { label: 'Create Ticket', route: 'create-ticket', icon: '🎫' },
   { label: 'Users', route: 'users', icon: '👤' },
   { label: 'Customers', route: 'customers', icon: '👥' },
   { label: 'Sales', route: 'sales', icon: '💰' },
@@ -46,6 +45,27 @@ const CRMDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const { notifications } = useNotification();
+  const user = getUserInfo();
+  const [profileDropdownVisible, setProfileDropdownVisible] = useState(false);
+  const profileRef = React.useRef();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileDropdownVisible(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   useEffect(() => {
     const fetchBranding = async () => {
@@ -88,13 +108,38 @@ const CRMDashboard = () => {
           ) : (
             <span className="crm-pro-logo-placeholder">🌀</span>
           )}
-          <span className="crm-pro-company">{branding.companyName || 'Enterprise Name'}</span>
+          <span className="crm-pro-company">
+            {branding.companyName || 'Enterprise Name'}
+            {user && user.profile && user.profile.fullName ? ` | ${user.profile.fullName}` : ''}
+          </span>
         </div>
         <div className="crm-pro-header-center">CRM Dashboard</div>
         <div className="crm-pro-header-right">
         <ThemeToggle />
           <span className="crm-pro-header-bell" title="Notifications">🔔</span>
-          <span className="crm-pro-header-profile" title="Profile">👤</span>
+          <span
+            className="crm-pro-header-profile"
+            title="Profile"
+            onClick={() => setProfileDropdownVisible((v) => !v)}
+            ref={profileRef}
+            style={{ cursor: 'pointer', position: 'relative' }}
+          >
+            👤
+            {profileDropdownVisible && (
+              <div className="crm-pro-profile-dropdown" style={{ position: 'absolute', right: 0, top: '120%', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', borderRadius: 8, minWidth: 200, zIndex: 100 }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #eee' }}>
+                  <div style={{ fontWeight: 600 }}>{user?.profile?.fullName || 'User'}</div>
+                  <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{user?.email}</div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  style={{ width: '100%', padding: '12px 0', border: 'none', background: 'none', color: '#d32f2f', fontWeight: 600, cursor: 'pointer', borderTop: '1px solid #eee', borderRadius: '0 0 8px 8px' }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </span>
         </div>
       </header>
       <div className="crm-pro-main">
