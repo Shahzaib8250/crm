@@ -33,12 +33,12 @@ function checkPermission(module, action) {
     try {
       // Superadmin always allowed
       if (req.user.role === 'superadmin') return next();
-      // Allow admins with crmAccess for product and user actions
+      // Allow admins with crmAccess for product, user, and lead actions
       if (
         req.user.role === 'admin' &&
         req.user.permissions &&
         req.user.permissions.crmAccess === true &&
-        (module === 'products' || module === 'users')
+        (module === 'products' || module === 'users' || module === 'leads')
       ) {
         return next();
       }
