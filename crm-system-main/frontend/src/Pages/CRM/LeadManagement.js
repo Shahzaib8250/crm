@@ -433,25 +433,6 @@ const LeadManagement = () => {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="assignedTo">Assigned To</label>
-                  <select
-                    id="assignedTo"
-                    name="assignedTo"
-                    value={formData.assignedTo || ''}
-                    onChange={handleChange}
-                    required
-                    disabled={currentUser?.role === 'admin'}
-                  >
-                    <option value="">Select Admin</option>
-                    {admins.map(admin => (
-                      <option key={admin._id} value={admin._id}>
-                        {admin.profile?.fullName ? `${admin.profile.fullName} (${admin.email})` : admin.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-  
-                <div className="form-group">
                   <label htmlFor="notes">Notes</label>
                   <textarea
                     id="notes"
