@@ -62,27 +62,30 @@ const checkCrmAccess = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required.' });
     }
-    
     // SuperAdmin always has access
     if (req.user.role === 'superadmin') {
       return next();
     }
-    
-    // For other roles, check permissions
-    if (req.user.role === 'admin') {
-      // If using real DB
-      const admin = await User.findById(req.user.id);
-      if (!admin || !admin.permissions || !admin.permissions.crmAccess) {
-        return res.status(403).json({ message: 'You do not have access to the CRM.' });
+    // For admin or user, check permissions or productAccess
+    if (req.user.role === 'admin' || req.user.role === 'user') {
+      const user = await User.findById(req.user.id);
+      // Check legacy permissions
+      if (user && user.permissions && user.permissions.crmAccess) {
+        return next();
       }
+      // Check productAccess for CRM
+      if (user && Array.isArray(user.productAccess)) {
+        const hasCrmProductAccess = user.productAccess.some(
+          (pa) => pa.productId === 'crm' && pa.hasAccess === true
+        );
+        if (hasCrmProductAccess) {
+          return next();
+        }
+      }
+      return res.status(403).json({ message: 'You do not have access to the CRM.' });
     }
-    
-    // Users don't have access
-    if (req.user.role === 'user') {
-      return res.status(403).json({ message: 'Users do not have access to the CRM.' });
-    }
-    
-    next();
+    // Default: deny
+    return res.status(403).json({ message: 'You do not have access to the CRM.' });
   } catch (error) {
     console.error('CRM access check error:', error);
     res.status(500).json({ message: 'Internal server error checking CRM access.' });

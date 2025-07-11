@@ -213,7 +213,7 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
       <div className="modal-header">
         <h2>{mode === 'manage' ? 'Manage Ticket' : 'Ticket Details'}</h2>
         <button className="close-btn" onClick={onClose}>×</button>
-      </div>
+        </div>
       <div className="modal-body">
         {alert.show && (
           <div className={`alert alert-${alert.type}`} style={{ marginBottom: 12 }}>
@@ -231,11 +231,11 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
               <div className="form-group">
                 <label><strong>Title:</strong></label>
                 <input type="text" value={ticket.subject || ''} readOnly disabled />
-              </div>
+          </div>
               <div className="form-group">
                 <label><strong>Description:</strong></label>
                 <textarea value={ticket.message || ticket.description || ''} readOnly disabled rows={3} />
-              </div>
+          </div>
               <div className="form-group">
                 <label><strong>Status:</strong></label>
                 <select
@@ -248,7 +248,7 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
                   <option value="Resolved">Resolved</option>
                   <option value="Closed">Closed</option>
                 </select>
-              </div>
+          </div>
               <div className="form-group">
                 <label><strong>Add Response:</strong></label>
                 <textarea
@@ -258,21 +258,21 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
                   rows={4}
                   disabled={!canManage}
                 />
-              </div>
+          </div>
               <button type="submit" className="submit-response-btn" disabled={loading || !canManage}>
                 {loading ? 'Sending...' : 'Send Response'}
               </button>
               {/* Forward to Super Admin button logic */}
               {userRole === 'admin' && !ticket.isAdminTicket && !ticket.forwardedToSuperAdmin && canManage && (
-                <button
+            <button 
                   type="button"
                   className="forward-superadmin-btn"
                   style={{ marginTop: 12, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, cursor: 'pointer' }}
                   onClick={() => handleForwardToSuperAdmin(ticket)}
                   disabled={loading}
-                >
-                  Forward to Super Admin
-                </button>
+            >
+              Forward to Super Admin
+            </button>
               )}
               <div className="responses-list">
                 <h3>Conversation</h3>
@@ -284,7 +284,7 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
                         <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
                       </div>
                       <p className="response-message">{response.message}</p>
-                    </div>
+          </div>
                   ))
                 ) : (
                   <p className="no-responses">No messages yet. Start the conversation!</p>
@@ -301,22 +301,22 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
               <p><strong>Status:</strong> {ticket.status || ''}</p>
               <p><strong>Priority:</strong> {ticket.priority || ''}</p>
               <div className="responses-list chat-interface">
-                <h3>Conversation</h3>
-                {currentResponses.length > 0 ? (
+          <h3>Conversation</h3>
+            {currentResponses.length > 0 ? (
                   currentResponses.map((response, index) => (
                     <div key={index} className={`response-item ${getChatBubbleClass(response.role)}`}> 
-                      <div className="response-header">
+                  <div className="response-header">
                         <span className="response-role">{response.role}</span>
                         <span className="response-time">{new Date(response.createdAt).toLocaleString()}</span>
-                      </div>
-                      <p className="response-message">{response.message}</p>
-                    </div>
+                  </div>
+                  <p className="response-message">{response.message}</p>
+                </div>
                   ))
-                ) : (
-                  <p className="no-responses">No messages yet. Start the conversation!</p>
-                )}
-              </div>
-            </div>
+            ) : (
+              <p className="no-responses">No messages yet. Start the conversation!</p>
+            )}
+          </div>
+        </div>
           ) : mode === 'view' && !disableAdminEdit ? (
             <div className="ticket-details-section">
               <p><strong>Subject:</strong> {ticket.subject || ''}</p>
@@ -342,18 +342,18 @@ const TicketDetailsModal = ({ isOpen, onClose, ticket, userRole, onResponseAdded
               <form className="add-response-form" onSubmit={handleSubmitResponse} style={{marginTop: 16}}>
                 <div className="form-group">
                   <label><strong>Add Response:</strong></label>
-                  <textarea
-                    value={newResponse}
+          <textarea
+            value={newResponse}
                     onChange={e => setNewResponse(e.target.value)}
                     placeholder="Type your response..."
                     rows={3}
                     disabled={loading}
-                  />
+          />
                 </div>
                 <button type="submit" className="submit-response-btn" disabled={loading}>
                   {loading ? 'Sending...' : 'Send Response'}
-                </button>
-              </form>
+          </button>
+        </form>
             </div>
           ) : (
             <div className="ticket-details-section">
