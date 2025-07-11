@@ -45,4 +45,9 @@
 /* Add a subtle background in dark mode */
 .dark-theme .theme-toggle-btn {
   background-color: rgba(255, 255, 255, 0.05);
+  color: #f5f7fa; /* Ensure high contrast for icon/text in dark mode */
+}
+
+.dark-theme .theme-toggle-btn span[role="img"] {
+  color: #f5f7fa;
 } 

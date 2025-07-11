@@ -3018,58 +3018,60 @@ const SuperAdminDashboard = () => {
                     <p>No invoices found. Create your first invoice to get started.</p>
                   </div>
                 ) : (
-                  <div className="invoices-table-container">
-                    <table className="invoices-table">
-                      <thead>
-                        <tr>
-                          <th>Invoice #</th>
-                          <th>Enterprise</th>
-                          <th>Amount</th>
-                          <th>Issue Date</th>
-                          <th>Due Date</th>
-                          <th>Status</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {invoices.map((invoice) => (
-                          <tr key={invoice._id} className={`invoice-row ${invoice.status === 'overdue' ? 'highlight-row' : ''}`}>
-                            <td>{invoice.invoiceNumber}</td>
-                            <td>{invoice.enterpriseDetails?.companyName || invoice.adminId?.profile?.fullName || 'Unknown'}</td>
-                            <td>${invoice.totalAmount.toFixed(2)}</td>
-                            <td>{new Date(invoice.issueDate).toLocaleDateString()}</td>
-                            <td>{new Date(invoice.dueDate).toLocaleDateString()}</td>
-                            <td>
-                              <span className={`status-badge ${invoice.status}`}>
-                                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                              </span>
-                            </td>
-                            <td className="invoice-actions">
-                              <button
-                                className="view-btn"
-                                onClick={() => handleViewInvoice(invoice)}
-                              >
-                                View
-                              </button>
-                              <button
-                                className="edit-btn"
-                                onClick={() => handleEditInvoice(invoice)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="delete-btn"
-                                onClick={() => handleDeleteInvoice(invoice._id)}
-                              >
-                                Delete
-                              </button>
-                            </td>
+                  <div className="invoices-table-wrapper">
+                    <div className="invoices-table-container">
+                      <table className="invoices-table">
+                        <thead>
+                          <tr>
+                            <th>Invoice #</th>
+                            <th>Enterprise</th>
+                            <th>Amount</th>
+                            <th>Issue Date</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-            </div>
-          )}
+                        </thead>
+                        <tbody>
+                          {invoices.map((invoice) => (
+                            <tr key={invoice._id} className={`invoice-row ${invoice.status === 'overdue' ? 'highlight-row' : ''}`}>
+                              <td>{invoice.invoiceNumber}</td>
+                              <td>{invoice.enterpriseDetails?.companyName || invoice.adminId?.profile?.fullName || 'Unknown'}</td>
+                              <td>${invoice.totalAmount.toFixed(2)}</td>
+                              <td>{new Date(invoice.issueDate).toLocaleDateString()}</td>
+                              <td>{new Date(invoice.dueDate).toLocaleDateString()}</td>
+                              <td>
+                                <span className={`status-badge ${invoice.status}`}>
+                                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                                </span>
+                              </td>
+                              <td className="invoice-actions">
+                                <button
+                                  className="view-btn"
+                                  onClick={() => handleViewInvoice(invoice)}
+                                >
+                                  View
+                                </button>
+                                <button
+                                  className="edit-btn"
+                                  onClick={() => handleEditInvoice(invoice)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="delete-btn"
+                                  onClick={() => handleDeleteInvoice(invoice._id)}
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

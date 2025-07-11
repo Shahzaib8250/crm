@@ -18,6 +18,7 @@ const ThemeToggle = () => {
         title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
         aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
       >
+        <span role="img" aria-label="theme-logo" style={{ marginRight: 6 }}>🌓</span>
         {theme === 'light' ? (
           <i className="fas fa-moon"></i>
         ) : (

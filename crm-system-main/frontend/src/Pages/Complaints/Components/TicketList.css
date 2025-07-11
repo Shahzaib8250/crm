@@ -4,6 +4,8 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   margin-top: 20px;
   overflow: hidden;
+  max-width: 1200px;
+  width: 100%;
 }
 
 .ticket-list-header {
@@ -205,4 +207,17 @@
   .ticket-subject {
     flex: 1.5;
   }
+} 
+
+.dark-theme .ticket-list,
+.dark-theme .ticket-list-header,
+.dark-theme .ticket-row,
+.dark-theme .ticket-cell,
+.dark-theme .ticket-header-item {
+  background: var(--card-bg, #1e2235);
+  color: #fff;
+  border-color: var(--border-color, #234d99);
+}
+.dark-theme .ticket-row {
+  border-bottom: 1px solid var(--border-color, #234d99);
 } 

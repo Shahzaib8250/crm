@@ -119,3 +119,19 @@
     padding: 15px 0;
   }
 } 
+
+.dark-theme .super-admin-sidebar,
+.dark-theme .super-admin-sidebar .sidebar-header {
+  background-color: var(--sidebar-bg, #1a2238);
+}
+.dark-theme .super-admin-sidebar .company-name,
+.dark-theme .super-admin-sidebar .dashboard-title,
+.dark-theme .super-admin-sidebar .nav-item,
+.dark-theme .super-admin-sidebar .nav-label {
+  color: #fff !important;
+}
+.dark-theme .super-admin-sidebar .nav-item.active {
+  background-color: var(--primary-color, #1a3e72);
+  color: #fff !important;
+  border-left-color: #fff;
+} 

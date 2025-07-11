@@ -926,3 +926,18 @@ textarea:focus {
   height: auto !important;
   max-height: none !important;
 } 
+
+.invoices-table-container {
+  overflow-x: auto;
+  margin-top: 20px;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.dark-theme .invoices-table,
+.dark-theme .invoices-table th,
+.dark-theme .invoices-table td {
+  background: var(--card-bg, #1e2235);
+  color: #fff;
+  border-color: var(--border-color, #234d99);
+} 

@@ -849,7 +849,8 @@
   }
   
   .notifications-area {
-    width: 220px;
+    width: 100%;
+    height: 15%;
   }
   
   .dashboard-grid {
@@ -888,6 +889,7 @@
   }
 
   .notifications-area {
+    height: 15%;
     width: 100%;
     border-left: none;
     border-top: 1px solid #eaeaea;
