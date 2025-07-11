@@ -1160,6 +1160,8 @@ body {
   align-items: center;
   min-width: 220px;
   border-radius: 0 0 0 0;
+  height: 100vh; /* Make notifications bar full height */
+  box-sizing: border-box;
 }
 .crm-wireframe-notifications-title {
   font-size: 1.18rem;
@@ -1414,6 +1416,8 @@ body {
   box-shadow: -2px 0 8px 0 rgba(0,0,0,0.03);
   min-width: 220px;
   max-width: 100vw;
+  height: 100vh; /* Make notifications bar full height */
+  box-sizing: border-box;
 }
 .crm-pro-notifications-title {
   font-size: 1.1rem;

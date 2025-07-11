@@ -2676,41 +2676,6 @@ const SuperAdminDashboard = () => {
           </div>
         </header>
         
-        {/* Right Notifications */}
-        <div className="notifications-area">
-          <div className="notifications-header">
-            <h3>Notifications</h3>
-            {notifications.length > 0 && (
-              <button 
-                className="mark-all-read-btn" 
-                onClick={markAllNotificationsAsRead}
-                title="Mark all as read"
-              >
-                <i className="fas fa-check-double"></i>
-              </button>
-            )}
-          </div>
-          <div className="notifications-list">
-            {notifications.length === 0 ? (
-              <div className="no-notifications">
-                <p>No new notifications</p>
-              </div>
-            ) : (
-              notifications.map(notification => (
-                <div 
-                  key={notification.id} 
-                  className={`notification-item ${notification.read ? 'read' : 'unread'} ${notification.type}`}
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  {notification.title && <h4>{notification.title}</h4>}
-                  <p>{notification.text}</p>
-                  <span className="notification-time">{notification.time}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        
         <div className="dashboard-content">
           {activeTab === 'dashboard' && (
             <div className="dashboard-overview">
@@ -3183,6 +3148,39 @@ const SuperAdminDashboard = () => {
               <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Management</h2>
               <p>This section is under development. Please check back later.</p>
             </div>
+          )}
+        </div>
+      </div>
+      <div className="notifications-area">
+        <div className="notifications-header">
+          <h3>Notifications</h3>
+          {notifications.length > 0 && (
+            <button 
+              className="mark-all-read-btn" 
+              onClick={markAllNotificationsAsRead}
+              title="Mark all as read"
+            >
+              <i className="fas fa-check-double"></i>
+            </button>
+          )}
+        </div>
+        <div className="notifications-list">
+          {notifications.length === 0 ? (
+            <div className="no-notifications">
+              <p>No new notifications</p>
+            </div>
+          ) : (
+            notifications.map(notification => (
+              <div 
+                key={notification.id} 
+                className={`notification-item ${notification.read ? 'read' : 'unread'} ${notification.type}`}
+                onClick={() => handleNotificationClick(notification)}
+              >
+                {notification.title && <h4>{notification.title}</h4>}
+                <p>{notification.text}</p>
+                <span className="notification-time">{notification.time}</span>
+              </div>
+            ))
           )}
         </div>
       </div>
