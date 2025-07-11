@@ -786,4 +786,22 @@ router.post('/:ticketId/messages', authenticateToken, authorizeRole('user'), asy
   }
 });
 
+// Get forwarded tickets (user tickets assigned to this admin, now forwarded to superadmin)
+router.get('/admin/forwarded', authenticateToken, authorizeRole('admin'), async (req, res) => {
+  try {
+    const tickets = await Ticket.find({
+      adminId: req.user.id,
+      isAdminTicket: false,
+      forwardedToSuperAdmin: true
+    })
+      .populate('submittedBy', 'email profile.fullName enterprise.companyName')
+      .populate('adminId', 'email profile.fullName enterprise.companyName')
+      .sort({ createdAt: -1 });
+    res.json(tickets);
+  } catch (error) {
+    console.error('Error fetching forwarded tickets:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 

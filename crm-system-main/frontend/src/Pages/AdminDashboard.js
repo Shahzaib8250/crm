@@ -165,6 +165,11 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const [modalMode, setModalMode] = useState('view'); // 'view' or 'manage'
   // Add a state for modal alert
   const [modalAlert, setModalAlert] = useState(null);
+  // Add state for forwarded tickets
+  const [forwardedTickets, setForwardedTickets] = useState([]);
+  // Add state for filters
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedPriority, setSelectedPriority] = useState('All');
 
   // Ref to hold the current ticketsLoading state to prevent stale closures in useCallback
   const ticketsLoadingRef = useRef(ticketsLoading);
@@ -2223,50 +2228,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                           </div>
         );
       case 'tickets':
-        return (
-          <div className="dashboard-content-section">
-            <h2>Tickets</h2>
-            <div className="controls-section">
-              <button className="create-ticket-btn" onClick={() => setShowCreateTicketForm(true)}>
-                <span className="icon">+</span> Create New Ticket
-              </button>
-            </div>
-            
-            {showCreateTicketForm && (
-              <div className="create-ticket-form-container">
-                <TicketForm
-                  ticketForm={ticketForm}
-                  handleTicketFormChange={handleTicketFormChange}
-                  handleSubmitTicket={handleSubmitTicket}
-                  onClose={() => setShowCreateTicketForm(false)}
-                  onSuccess={() => {
-                    // Form will be reset by handleSubmitTicket
-                    // Success message will be shown by handleSubmitTicket
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="tickets-view">
-              {ticketsLoading ? (
-                <div className="loading-indicator">Loading tickets...</div>
-              ) : ticketsError ? (
-                <div className="error-message">{ticketsError}</div>
-              ) : (tickets || []).length === 0 ? (
-                <div className="no-tickets">No tickets found.</div>
-              ) : (
-                <TicketList
-                  tickets={(tickets || [])}
-                  onSelectTicket={() => { /* Admin doesn't need to select individual tickets for detail */ } }
-                  onManageTicket={handleOpenTicketModal}
-                  onDeleteTicket={ticket => handleDeleteTicket(ticket)}
-                  onViewTicket={handleViewTicket}
-                  userRole="admin"
-                />
-              )}
-            </div>
-          </div>
-        );
+        return renderTicketsSection();
       case 'users':
         return (
           <div className="section-container">
@@ -3264,13 +3226,31 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     }
   }, []);
 
-  // Fetch both ticket lists on mount or when switching tabs
+  // Fetch forwarded tickets
+  const fetchForwardedTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    setTicketsError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/tickets/admin/forwarded`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setForwardedTickets(response.data);
+    } catch (error) {
+      setTicketsError('Failed to fetch forwarded tickets');
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  // Update useEffect to fetch forwarded tickets when tickets tab is active
   useEffect(() => {
     if (activeTab === 'tickets') {
       fetchAssignedTickets();
       fetchCreatedTickets();
+      fetchForwardedTickets();
     }
-  }, [activeTab, fetchAssignedTickets, fetchCreatedTickets]);
+  }, [activeTab, fetchAssignedTickets, fetchCreatedTickets, fetchForwardedTickets]);
 
   // Ticket tab UI and rendering
   function renderTicketsSection() {
@@ -3285,20 +3265,66 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
             {manageTicketError}
           </div>
         )}
-        <div className="ticket-tabs">
+        <div className="ticket-tabs" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
           <button
             className={ticketTab === 'assigned' ? 'active' : ''}
+            style={ticketTab === 'assigned' ? { background: '#1976d2', color: '#fff', fontWeight: 'bold' } : {}}
             onClick={() => setTicketTab('assigned')}
           >
-            Tickets Assigned to Me
+            User Tickets
           </button>
           <button
             className={ticketTab === 'created' ? 'active' : ''}
+            style={ticketTab === 'created' ? { background: '#1976d2', color: '#fff', fontWeight: 'bold' } : {}}
             onClick={() => setTicketTab('created')}
           >
-            Tickets I Created (to Superadmin)
+            Admin Tickets
+          </button>
+          <button
+            className={ticketTab === 'forwarded' ? 'active' : ''}
+            style={ticketTab === 'forwarded' ? { background: '#1976d2', color: '#fff', fontWeight: 'bold' } : {}}
+            onClick={() => setTicketTab('forwarded')}
+          >
+            Forwarded Tickets
           </button>
         </div>
+        {/* Filter bar always visible, create button only for Admin Tickets tab */}
+        <div className="controls-section" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <select style={{ minWidth: 160 }} value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}>
+            <option value="All">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+          </select>
+          <select style={{ minWidth: 160 }} value={selectedPriority} onChange={e => setSelectedPriority(e.target.value)}>
+            <option value="All">All Priorities</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <div style={{ flex: 1 }} />
+          {ticketTab === 'created' && (
+            <button className="create-ticket-btn" onClick={() => setShowCreateTicketForm(true)}>
+              <span className="icon">+</span> Create New Ticket
+            </button>
+          )}
+        </div>
+        {showCreateTicketForm && ticketTab === 'created' && (
+          <div className="create-ticket-form-container">
+            <TicketForm
+              ticketForm={ticketForm}
+              handleTicketFormChange={handleTicketFormChange}
+              handleSubmitTicket={handleSubmitTicket}
+              onClose={() => setShowCreateTicketForm(false)}
+              onSuccess={() => {
+                // Form will be reset by handleSubmitTicket
+                // Success message will be shown by handleSubmitTicket
+              }}
+            />
+          </div>
+        )}
         <div className="ticket-tab-content">
           {ticketsLoading ? (
             <div>Loading tickets...</div>
@@ -3306,7 +3332,17 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
             <div className="error-message">{ticketsError}</div>
           ) : ticketTab === 'assigned' ? (
             <TicketList
-              tickets={assignedTickets}
+              tickets={filterTickets(assignedTickets)}
+              onViewTicket={handleViewTicket}
+              onDeleteTicket={handleDeleteTicket}
+              onManageTicket={handleManageTicket}
+              userRole="admin"
+              onForwardTicket={handleForwardTicket}
+              currentUserId={currentUser._id}
+            />
+          ) : ticketTab === 'created' ? (
+            <TicketList
+              tickets={filterTickets(createdTickets)}
               onViewTicket={handleViewTicket}
               onDeleteTicket={handleDeleteTicket}
               onManageTicket={handleManageTicket}
@@ -3316,7 +3352,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
             />
           ) : (
             <TicketList
-              tickets={createdTickets}
+              tickets={filterTickets(forwardedTickets)}
               onViewTicket={handleViewTicket}
               onDeleteTicket={handleDeleteTicket}
               onManageTicket={handleManageTicket}
@@ -3338,6 +3374,15 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const handleManageTicket = useCallback((ticket) => {
     handleOpenTicketModal(ticket, 'manage');
   }, [handleOpenTicketModal]);
+
+  // Helper to filter tickets by status and priority
+  const filterTickets = (tickets) => {
+    return tickets.filter(ticket => {
+      const statusMatch = selectedStatus === 'All' || ticket.status === selectedStatus;
+      const priorityMatch = selectedPriority === 'All' || ticket.priority === selectedPriority;
+      return statusMatch && priorityMatch;
+    });
+  };
 
   return (
     <div className="admin-dashboard">
