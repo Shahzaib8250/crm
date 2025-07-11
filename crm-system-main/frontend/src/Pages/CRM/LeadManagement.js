@@ -11,7 +11,8 @@ const LeadManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     company: '',
@@ -110,26 +111,20 @@ const LeadManagement = () => {
       if (!token) {
         throw new Error('No token found');
       }
-
       // Ensure status is set to 'lead'
       const leadData = { ...formData, status: 'lead' };
-
       // Set assignedTo if not provided
       if (!leadData.assignedTo && currentUser?.role === 'admin') {
         leadData.assignedTo = currentUser.id;
       }
-
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const url = selectedLead
         ? `${baseUrl}/api/enterprise/crm/leads/${selectedLead._id}`
         : `${baseUrl}/api/enterprise/crm/leads`;
-
       const method = selectedLead ? 'put' : 'post';
-
       await axios[method](url, leadData, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
-
       showAlert(`Lead ${selectedLead ? 'updated' : 'created'} successfully`, 'success');
       setOpenDialog(false);
       resetForm();
@@ -214,7 +209,8 @@ const LeadManagement = () => {
   
   const resetForm = () => {
     setFormData({
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       phone: '',
       company: '',
@@ -231,7 +227,8 @@ const LeadManagement = () => {
   const handleEdit = (lead) => {
     setSelectedLead(lead);
     setFormData({
-      name: lead.name,
+      firstName: lead.firstName || '',
+      lastName: lead.lastName || '',
       email: lead.email,
       phone: lead.phone || '',
       company: lead.company || '',
@@ -325,7 +322,7 @@ const LeadManagement = () => {
       
       {openDialog && (
         <div className="modal-overlay">
-          <div className="modal">
+          <div className="modal" style={{ minHeight: '750px', maxHeight: '95vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h3>{selectedLead ? 'Edit Lead' : 'Add New Lead'}</h3>
               <button 
@@ -339,21 +336,48 @@ const LeadManagement = () => {
               </button>
             </div>
             <div className="modal-body">
-              <form onSubmit={handleSubmit} className="lead-form">
-                <div className="form-group">
-                  <label htmlFor="name">Name</label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
+              <form onSubmit={handleSubmit} className="lead-form lead-form-modern">
+                <div className="form-row" style={{ display: 'flex', gap: '1rem', marginBottom: 0 }}>
+                  <div className="form-group" style={{ flex: 1, minWidth: 0 }}>
+                    <label htmlFor="firstName">First Name <span className="required">*</span></label>
+                    <div className="input-icon-group">
+                      <span className="input-icon">👤</span>
+                      <input
+                        type="text"
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        required
+                        placeholder="Lead's first name"
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    <small className="helper-text">Enter the lead's first name.</small>
+                  </div>
+                  <div className="form-group" style={{ flex: 1, minWidth: 0 }}>
+                    <label htmlFor="lastName">Last Name <span className="required">*</span></label>
+                    <div className="input-icon-group">
+                      <span className="input-icon">👤</span>
+                      <input
+                        type="text"
+                        id="lastName"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleChange}
+                        required
+                        placeholder="Lead's last name"
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    <small className="helper-text">Enter the lead's last name.</small>
+                  </div>
                 </div>
-                
+                <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="email">Email</label>
+                    <label htmlFor="email">Email <span className="required">*</span></label>
+                    <div className="input-icon-group">
+                      <span className="input-icon">✉️</span>
                   <input
                     type="email"
                     id="email"
@@ -361,31 +385,43 @@ const LeadManagement = () => {
                     value={formData.email}
                     onChange={handleChange}
                     required
+                        placeholder="lead@email.com"
                   />
+                    </div>
+                    <small className="helper-text">We'll never share the lead's email.</small>
+                  </div>
                 </div>
-                
+                <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="phone">Phone</label>
+                    <div className="input-icon-group">
+                      <span className="input-icon">📞</span>
                   <input
                     type="text"
                     id="phone"
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                        placeholder="e.g. +1 555 123 4567"
                   />
                 </div>
-                
+                  </div>
                 <div className="form-group">
                   <label htmlFor="company">Company</label>
+                    <div className="input-icon-group">
+                      <span className="input-icon">🏢</span>
                   <input
                     type="text"
                     id="company"
                     name="company"
                     value={formData.company}
                     onChange={handleChange}
+                        placeholder="Company name"
                   />
+                    </div>
+                  </div>
                 </div>
-                
+                <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="source">Lead Source</label>
                   <select
@@ -395,18 +431,19 @@ const LeadManagement = () => {
                     onChange={handleChange}
                   >
                     <option value="">Select Source</option>
-                    <option value="website">Website</option>
+                    <option value="direct">Direct</option>
                     <option value="referral">Referral</option>
+                    <option value="web">Website</option>
                     <option value="social">Social Media</option>
-                    <option value="email">Email Campaign</option>
-                    <option value="call">Cold Call</option>
                     <option value="event">Event</option>
                     <option value="other">Other</option>
                   </select>
+                    <small className="helper-text">Where did this lead come from?</small>
                 </div>
-                
                 <div className="form-group">
                   <label htmlFor="potentialValue">Potential Value ($)</label>
+                    <div className="input-icon-group">
+                      <span className="input-icon">💰</span>
                   <input
                     type="number"
                     id="potentialValue"
@@ -415,9 +452,11 @@ const LeadManagement = () => {
                     onChange={handleChange}
                     min="0"
                     step="100"
+                        placeholder="0"
                   />
                 </div>
-                
+                    <small className="helper-text">Estimated deal value.</small>
+                  </div>
                 <div className="form-group">
                   <label htmlFor="conversionProbability">Conversion Probability</label>
                   <select
@@ -431,8 +470,9 @@ const LeadManagement = () => {
                     <option value="high">High</option>
                   </select>
                 </div>
-
-                <div className="form-group">
+                </div>
+                <div className="form-row">
+                  <div className="form-group" style={{ flex: 1 }}>
                   <label htmlFor="notes">Notes</label>
                   <textarea
                     id="notes"
@@ -440,12 +480,14 @@ const LeadManagement = () => {
                     value={formData.notes || ''}
                     onChange={handleChange}
                     rows="3"
+                      placeholder="Add any extra notes about this lead..."
                   />
+                  </div>
                 </div>
-                
-                <button type="submit" className="submit-btn">
-                  {selectedLead ? 'Update Lead' : 'Add Lead'}
-                </button>
+                <div className="form-actions responsive-actions">
+                  <button type="button" className="cancel-btn" onClick={() => { setOpenDialog(false); resetForm(); }}>Cancel</button>
+                  <button type="submit" className="submit-btn primary">{selectedLead ? 'Update Lead' : 'Add Lead'}</button>
+                </div>
               </form>
             </div>
           </div>
