@@ -27,10 +27,12 @@ const ServiceManagement = () => {
 
   const fetchServices = async () => {
     try {
-    setLoading(true);
+      setLoading(true);
       const token = localStorage.getItem('token');
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const response = await axios.get(`${baseUrl}/api/services/admin`, {
+      // Use /user endpoint for subusers, /admin for admins
+      const endpoint = user?.role === 'user' ? '/api/services/user' : '/api/services/admin';
+      const response = await axios.get(`${baseUrl}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Only show services created by admins (not superadmin)

@@ -42,6 +42,18 @@ function checkPermission(module, action) {
       ) {
         return next();
       }
+      // Allow subusers with CRM product access to view products
+      if (
+        req.user.role === 'user' &&
+        Array.isArray(req.user.productAccess) &&
+        req.user.productAccess.some(pa => pa.productId === 'crm' && pa.hasAccess) &&
+        (
+          (module === 'products' && action === 'view') ||
+          (module === 'services' && action === 'view')
+        )
+      ) {
+        return next();
+      }
       // Admins and users: check assigned role
       if (
         req.user.permissions &&

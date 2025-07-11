@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const serviceController = require('../controllers/serviceController');
 const { authenticateToken, authorizeRole } = require('../middleware/authMiddleware');
+const { checkPermission } = require('../middleware/roleMiddleware');
 
 // Service routes
 // Services CRUD for SuperAdmin
@@ -29,6 +30,9 @@ router.get('/admin/:id', authenticateToken, authorizeRole('admin'), serviceContr
 
 // Generic quotation route
 router.post('/:serviceId/quotation', authenticateToken, authorizeRole('admin'), serviceController.requestQuotation);
+
+// Allow subusers with CRM access to view services
+router.get('/user', authenticateToken, checkPermission('services','view'), serviceController.getAllServices);
 
 // Service statistics for SuperAdmin
 router.get('/superadmin/stats/summary', authenticateToken, authorizeRole('superadmin'), serviceController.getServiceStats);
