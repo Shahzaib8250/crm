@@ -923,11 +923,24 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   const handleEditUser = (user) => {
     setSelectedUser(user);
+    // Ensure every productAccessList entry has a permissions object with all keys
+    const normalizedProductAccessList = (user.productAccessList || user.productAccess || []).map(pa => ({
+      ...pa,
+      permissions: {
+        createLead: pa.permissions?.createLead || false,
+        editLead: pa.permissions?.editLead || false,
+        deleteLead: pa.permissions?.deleteLead || false,
+        addProduct: pa.permissions?.addProduct || false,
+        deleteProduct: pa.permissions?.deleteProduct || false,
+        editProduct: pa.permissions?.editProduct || false,
+        // Add more permissions here if needed
+      }
+    }));
     setFormData({
       email: user.email,
       password: '',
       profile: { ...user.profile },
-      productAccessList: user.productAccessList || user.productAccess || [],
+      productAccessList: normalizedProductAccessList,
       // ... copy other fields as needed ...
     });
     setFormErrors({});

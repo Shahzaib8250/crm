@@ -185,6 +185,10 @@ const userSchema = new mongoose.Schema({
     updatedAt: {
       type: Date,
       default: Date.now
+    },
+    permissions: {
+      type: Object,
+      default: {}
     }
   }]
 }, { 

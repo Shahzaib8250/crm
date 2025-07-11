@@ -18,6 +18,15 @@ const SubUserLogin = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
+        // Fetch latest user profile from backend
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/users/${result.data.user?.id || result.data.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const user = await res.json();
+          localStorage.setItem('user', JSON.stringify(user));
+        }
         // Login successful - navigate based on role
         const { role } = result.data;
         if (role === 'user') {
