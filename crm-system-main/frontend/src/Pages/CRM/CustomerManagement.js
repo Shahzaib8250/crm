@@ -131,7 +131,7 @@ const CustomerManagement = () => {
         <div className="no-data-container">No customers found.</div>
       ) : (
             <div className="customers-grid">
-          {customers.map(c => (
+          {customers.filter(c => c.status === 'customer').map(c => (
             <div className="customer-card" key={c._id}>
                     <div className="customer-header">
                 <h3>{c.company || `${c.firstName} ${c.lastName}`}</h3>

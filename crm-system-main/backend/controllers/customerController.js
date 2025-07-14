@@ -163,18 +163,12 @@ const updateCustomer = async (req, res) => {
     
     // Create activity log
     await Activity.create({
-      type: 'customer_updated',
-      user: {
-        id: req.user.id,
-        name: req.user.email
-      },
+      type: 'other',
+      customerId: customer._id,
+      subject: `Customer updated: ${customer.firstName} ${customer.lastName}`,
       description: `Updated customer ${customer.firstName} ${customer.lastName}`,
-      details: JSON.stringify(updateData),
-      entity: {
-        type: 'customer',
-        id: customer._id
-      },
-      timestamp: new Date()
+      createdBy: req.user.id,
+      assignedTo: customer.assignedTo || req.user.id
     });
     
     res.json({ 
