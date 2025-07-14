@@ -359,16 +359,16 @@ const LeadManagement = () => {
                     <label htmlFor="lastName">Last Name <span className="required">*</span></label>
                     <div className="input-icon-group">
                       <span className="input-icon">👤</span>
-                      <input
-                        type="text"
+                  <input
+                    type="text"
                         id="lastName"
                         name="lastName"
                         value={formData.lastName}
-                        onChange={handleChange}
-                        required
+                    onChange={handleChange}
+                    required
                         placeholder="Lead's last name"
                         style={{ width: '100%' }}
-                      />
+                  />
                     </div>
                     <small className="helper-text">Enter the lead's last name.</small>
                   </div>

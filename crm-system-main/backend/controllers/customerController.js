@@ -99,16 +99,11 @@ const createCustomer = async (req, res) => {
     // Create activity log
     await Activity.create({
       type: 'customer_created',
-      user: {
-        id: req.user.id,
-        name: req.user.email
-      },
-      description: `Created customer ${firstName} ${lastName}`,
-      entity: {
-        type: 'customer',
-        id: customer._id
-      },
-      timestamp: new Date()
+      subject: 'Customer Created',
+      customerId: customer._id,
+      createdBy: req.user.id,
+      assignedTo: assignedTo || req.user.id,
+      description: `Created customer ${firstName} ${lastName}`
     });
     
     res.status(201).json({ 

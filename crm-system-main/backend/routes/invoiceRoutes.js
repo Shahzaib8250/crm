@@ -87,8 +87,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Create a new invoice - SuperAdmin only
-router.post('/', authenticateToken, isSuperAdmin, async (req, res) => {
+// Create a new invoice - Admin and SuperAdmin
+router.post('/', authenticateToken, isAdmin, async (req, res) => {
   try {
     const {
       adminId,
