@@ -27,6 +27,31 @@ const LeadManagement = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const SOURCE_OPTIONS = [
+    'direct',
+    'referral',
+    'web',
+    'social',
+    'event',
+    'other',
+  ];
+  const STATUS_OPTIONS = [
+    'lead',
+    'new',
+    'active',
+    'inactive',
+    'opportunity',
+    'customer',
+  ];
+  const [filters, setFilters] = useState({
+    source: '',
+    probability: '',
+    status: 'lead',
+  });
+  const [manageDialog, setManageDialog] = useState(false);
+  const [manageLead, setManageLead] = useState(null);
+  const [manageStatus, setManageStatus] = useState('lead');
+  const [manageNotes, setManageNotes] = useState('');
 
   // Show alert message with auto-dismiss
   const showAlert = useCallback((message, type = 'success') => {
@@ -104,6 +129,27 @@ const LeadManagement = () => {
     }
   }, [navigate]);
 
+  const getUniqueValues = (key) => {
+    const values = leads.map((lead) => {
+      if (key === 'probability') return lead.conversionProbability || 'Medium';
+      if (key === 'status') return lead.status || 'Open';
+      return lead[key] || '';
+    });
+    return Array.from(new Set(values.filter(Boolean)));
+  };
+
+  const filteredLeads = leads.filter((lead) => {
+    const matchesSource = !filters.source || lead.source === filters.source;
+    const matchesProbability = !filters.probability || (lead.conversionProbability || 'Medium') === filters.probability;
+    const matchesStatus = !filters.status || (lead.status || 'Open') === filters.status;
+    return matchesSource && matchesProbability && matchesStatus;
+  });
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -111,8 +157,8 @@ const LeadManagement = () => {
       if (!token) {
         throw new Error('No token found');
       }
-      // Ensure status is set to 'lead'
-      const leadData = { ...formData, status: 'lead' };
+      // Always set status to 'lead' when creating a new lead
+      const leadData = { ...formData, status: selectedLead ? (formData.status || 'lead') : 'lead' };
       // Set assignedTo if not provided
       if (!leadData.assignedTo && currentUser?.role === 'admin') {
         leadData.assignedTo = currentUser.id;
@@ -131,6 +177,7 @@ const LeadManagement = () => {
       fetchLeads();
     } catch (error) {
       console.error('Error submitting lead:', error);
+      console.error('Full error response:', error.response?.data);
       setAlerts([...alerts, { 
         type: 'error', 
         message: `Failed to ${selectedLead ? 'update' : 'create'} lead: ${error.response?.data?.message || error.message}` 
@@ -247,6 +294,50 @@ const LeadManagement = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleManage = (lead) => {
+    setManageLead(lead);
+    setManageStatus(lead.status || 'lead');
+    setManageNotes(lead.notes || '');
+    setManageDialog(true);
+  };
+
+  const handleManageSubmit = async (e) => {
+    e.preventDefault();
+    if (!manageLead) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No token found');
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const { _id, createdAt, updatedAt, lastActivity, __v, ...cleanLead } = manageLead;
+      const payload = {
+        ...cleanLead,
+        status: manageStatus,
+        notes: manageNotes,
+        createdBy: manageLead.createdBy || currentUser?.id,
+        assignedTo: manageLead.assignedTo?._id || manageLead.assignedTo || null
+      };
+      console.log('Updating lead with:', payload);
+      await axios.put(
+        `${baseUrl}/api/enterprise/crm/leads/${manageLead._id}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showAlert('Lead updated successfully', 'success');
+      setManageDialog(false);
+      setManageLead(null);
+      fetchLeads();
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      console.error('Full error response (data):', error.response?.data);
+      console.error('Full error response (response):', error.response);
+      console.error('Full error object:', error);
+      setAlerts([...alerts, {
+        type: 'error',
+        message: `Failed to update lead: ${error.response?.data?.message || error.message}`
+      }]);
+    }
+  };
+
   return (
     <div className="crm-lead-management animate-fade-in">
       {alert.show && (
@@ -283,39 +374,69 @@ const LeadManagement = () => {
           Add New Lead
         </button>
       </div>
-      
+      <div className="lead-filters" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <select name="source" value={filters.source} onChange={handleFilterChange}>
+          <option value="">All Sources</option>
+          {SOURCE_OPTIONS.map((src) => (
+            <option key={src} value={src}>{src.charAt(0).toUpperCase() + src.slice(1)}</option>
+          ))}
+        </select>
+        <select name="probability" value={filters.probability} onChange={handleFilterChange}>
+          <option value="">All Probabilities</option>
+          {['Low', 'Medium', 'High'].map((prob) => (
+            <option key={prob} value={prob}>{prob}</option>
+          ))}
+        </select>
+        <select name="status" value={filters.status} onChange={handleFilterChange}>
+          <option value="">All Statuses</option>
+          {STATUS_OPTIONS.map((status) => (
+            <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+          ))}
+        </select>
+      </div>
       {loading ? (
         <div className="loading">Loading leads...</div>
       ) : error ? (
         <div className="error">{error}</div>
       ) : (
-        <div className="leads-grid">
-          {leads.length === 0 ? (
+        <div className="leads-table-container">
+          {filteredLeads.length === 0 ? (
             <div className="no-leads">No leads found. Add your first lead!</div>
           ) : (
-            leads.map(lead => (
-              <div key={lead._id} className="lead-card">
-                <div className="lead-info">
-                  <h3>{lead.name}</h3>
-                  <p>{lead.email}</p>
-                  <p>{lead.phone || 'No phone'}</p>
-                  <p>{lead.company || 'No company'}</p>
-                  <p className="source">{lead.source ? `Source: ${lead.source}` : 'No source'}</p>
-                  <p className="probability">
-                    Probability: 
-                    <span className={`probability-${lead.conversionProbability || 'medium'}`}>
-                      {lead.conversionProbability || 'Medium'}
-                    </span>
-                  </p>
-                  <p className="value">Potential Value: ${lead.potentialValue || 0}</p>
-                </div>
-                <div className="lead-actions">
-                  <button onClick={() => handleEdit(lead)}>Edit</button>
-                  <button onClick={() => handleConvertToCustomer(lead)} className="convert-btn">Convert</button>
-                  <button onClick={() => handleDelete(lead._id)} className="delete-btn">Delete</button>
-                </div>
-              </div>
-            ))
+            <table className="leads-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Company</th>
+                  <th>Source</th>
+                  <th>Probability</th>
+                  <th>Status</th>
+                  <th>Potential Value</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLeads.map((lead) => (
+                  <tr key={lead._id}>
+                    <td>{lead.firstName} {lead.lastName}</td>
+                    <td>{lead.email}</td>
+                    <td>{lead.phone || 'No phone'}</td>
+                    <td>{lead.company || 'No company'}</td>
+                    <td>{lead.source || 'No source'}</td>
+                    <td>{lead.conversionProbability || 'Medium'}</td>
+                    <td>{lead.status || 'Open'}</td>
+                    <td>${lead.potentialValue || 0}</td>
+                    <td>
+                      <button onClick={() => handleEdit(lead)}>Edit</button>
+                      <button onClick={() => handleManage(lead)} className="manage-btn">Manage</button>
+                      <button onClick={() => handleDelete(lead._id)} className="delete-btn">Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}
@@ -431,12 +552,9 @@ const LeadManagement = () => {
                     onChange={handleChange}
                   >
                     <option value="">Select Source</option>
-                    <option value="direct">Direct</option>
-                    <option value="referral">Referral</option>
-                    <option value="web">Website</option>
-                    <option value="social">Social Media</option>
-                    <option value="event">Event</option>
-                    <option value="other">Other</option>
+                    {SOURCE_OPTIONS.map((src) => (
+                      <option key={src} value={src}>{src.charAt(0).toUpperCase() + src.slice(1)}</option>
+                    ))}
                   </select>
                     <small className="helper-text">Where did this lead come from?</small>
                 </div>
@@ -490,6 +608,46 @@ const LeadManagement = () => {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Manage Lead Modal */}
+      {manageDialog && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ minHeight: '350px', maxWidth: '400px', margin: 'auto' }}>
+            <div className="modal-header">
+              <h3>Manage Lead</h3>
+              <button className="close-btn" onClick={() => setManageDialog(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleManageSubmit} className="manage-lead-form">
+              <div className="form-group">
+                <label htmlFor="manage-status">Status</label>
+                <select
+                  id="manage-status"
+                  value={manageStatus}
+                  onChange={e => setManageStatus(e.target.value)}
+                  required
+                >
+                  {STATUS_OPTIONS.map(status => (
+                    <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="manage-notes">Comments</label>
+                <textarea
+                  id="manage-notes"
+                  value={manageNotes}
+                  onChange={e => setManageNotes(e.target.value)}
+                  rows={4}
+                  placeholder="Add or edit comments for this lead"
+                />
+              </div>
+              <div className="form-actions responsive-actions">
+                <button type="button" className="cancel-btn" onClick={() => setManageDialog(false)}>Cancel</button>
+                <button type="submit" className="submit-btn primary">Save</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

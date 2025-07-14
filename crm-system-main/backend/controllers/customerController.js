@@ -231,17 +231,12 @@ const deleteCustomer = async (req, res) => {
     
     // Create activity log
     await Activity.create({
-      type: 'customer_deleted',
-      user: {
-        id: req.user.id,
-        name: req.user.email
-      },
+      type: 'other',
+      customerId: customer._id,
+      subject: `Customer deleted: ${customer.firstName} ${customer.lastName}`,
       description: `Deleted customer ${customer.firstName} ${customer.lastName}`,
-      entity: {
-        type: 'customer',
-        id: customer._id
-      },
-      timestamp: new Date()
+      createdBy: req.user.id,
+      assignedTo: customer.assignedTo || req.user.id
     });
     
     res.json({ 
