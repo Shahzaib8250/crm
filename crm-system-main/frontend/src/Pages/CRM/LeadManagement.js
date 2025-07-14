@@ -157,8 +157,22 @@ const LeadManagement = () => {
       if (!token) {
         throw new Error('No token found');
       }
-      // Always set status to 'lead' when creating a new lead
-      const leadData = { ...formData, status: selectedLead ? (formData.status || 'lead') : 'lead' };
+      let leadData;
+      if (selectedLead) {
+        // Start with the original lead
+        leadData = { ...selectedLead };
+        // Overwrite only fields that are present in formData and not undefined/empty
+        Object.keys(formData).forEach(key => {
+          if (formData[key] !== undefined && formData[key] !== '') {
+            leadData[key] = formData[key];
+          }
+        });
+        // Always explicitly set status to the original status
+        leadData.status = selectedLead.status;
+      } else {
+        // New lead
+        leadData = { ...formData, status: 'lead' };
+      }
       // Set assignedTo if not provided
       if (!leadData.assignedTo && currentUser?.role === 'admin') {
         leadData.assignedTo = currentUser.id;

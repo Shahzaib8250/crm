@@ -84,6 +84,10 @@ const CustomerSchema = new Schema({
     type: String,
     trim: true
   },
+  potentialValue: {
+    type: Number,
+    default: 0
+  },
   tags: [String],
   assignedTo: {
     type: Schema.Types.ObjectId,
