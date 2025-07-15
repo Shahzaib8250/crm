@@ -3,6 +3,9 @@ import axios from 'axios';
 import './CRM.css';
 import { getUserInfo } from '../../services/authService';
 import { useNotification } from '../../utils/NotificationContext';
+import jsPDF from 'jspdf';
+// For modern jsPDF, autotable is a named import from 'jspdf-autotable'
+import autoTable from 'jspdf-autotable';
 
 const ITEM_TYPES = [
   { value: 'service', label: 'Service' },
@@ -195,6 +198,40 @@ const InvoiceManagement = () => {
     }
   };
 
+  const downloadInvoice = (invoice) => {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text(`Invoice #${invoice.invoiceNumber || ''}`, 14, 18);
+      doc.setFontSize(12);
+      doc.text(`Date: ${invoice.issueDate ? new Date(invoice.issueDate).toLocaleDateString() : '-'}`, 14, 28);
+      doc.text(`Status: ${invoice.status}`, 14, 36);
+      doc.text(`Total: $${invoice.totalAmount?.toFixed(2) || '0.00'}`, 14, 44);
+      doc.text(`Due Date: ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : '-'}`, 14, 52);
+      doc.text(`Notes: ${invoice.notes || '-'}`, 14, 60);
+      doc.text(`Customer: ${invoice.enterpriseDetails?.companyName || ''}`, 14, 68);
+      doc.text(`Email: ${invoice.enterpriseDetails?.email || ''}`, 14, 76);
+      // Items Table
+      const items = invoice.items?.map((item, idx) => [
+        idx + 1,
+        item.name || item.type,
+        item.description || '',
+        item.quantity || 1,
+        `$${item.unitPrice?.toFixed(2) || '0.00'}`,
+        `$${item.totalPrice?.toFixed(2) || '0.00'}`
+      ]) || [];
+      autoTable(doc, {
+        head: [['#', 'Name', 'Description', 'Qty', 'Unit Price', 'Total']],
+        body: items,
+        startY: 84
+      });
+      doc.save(`Invoice_${invoice.invoiceNumber || invoice._id}.pdf`);
+    } catch (err) {
+      console.error('Invoice download error:', err);
+      alert('Failed to download invoice. Please try again.');
+    }
+  };
+
   return (
     <div className="crm-module-page animate-fade-in">
       <h2>Invoice Management</h2>
@@ -303,6 +340,7 @@ const InvoiceManagement = () => {
                   <td>${inv.totalAmount?.toFixed(2) || '0.00'}</td>
                   <td>
                     <button className="view-btn" onClick={() => handleView(inv)}>View</button>
+                    <button className="download-btn" onClick={() => downloadInvoice(inv)} style={{ marginLeft: 8 }}>Download</button>
                   </td>
                 </tr>
               ))}
@@ -334,6 +372,7 @@ const InvoiceManagement = () => {
                   <li>No items</li>
                 )}
               </ul>
+              <button className="download-btn" onClick={() => downloadInvoice(selectedInvoice)} style={{ marginTop: 16 }}>Download</button>
             </div>
           </div>
         </div>
