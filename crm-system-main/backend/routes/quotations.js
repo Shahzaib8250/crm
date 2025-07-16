@@ -6,7 +6,18 @@ const { authenticateToken } = require('../middleware/authMiddleware');
 // Get all quotations
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const quotations = await Quotation.find()
+    let query = {};
+    if (req.user.role === 'user' || req.user.role === 'admin') {
+      const enterpriseId = req.user.enterprise?.enterpriseId;
+      if (enterpriseId) {
+        // Find all admins in the same enterprise
+        const User = require('../models/User');
+        const admins = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
+        const adminIds = admins.map(a => a._id);
+        query.adminId = { $in: adminIds };
+      }
+    }
+    const quotations = await Quotation.find(query)
       .populate('serviceId')
       .populate('adminId', 'email profile')
       .sort({ createdAt: -1 });

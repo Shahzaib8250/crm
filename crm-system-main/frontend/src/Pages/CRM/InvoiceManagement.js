@@ -88,11 +88,8 @@ const InvoiceManagement = () => {
         const response = await axios.get(`${baseUrl}${url}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        let data = response.data;
-        if (user.role === 'user') {
-          data = data.filter(inv => inv.enterpriseDetails && inv.enterpriseDetails.users && inv.enterpriseDetails.users.includes(user.email));
-        }
-        setInvoices(data);
+        // Remove extra filtering for user role; backend already filters by enterprise
+        setInvoices(response.data);
         setError(null);
       } catch (err) {
         setError('Failed to fetch invoices');

@@ -11,6 +11,7 @@ import TicketForm from '../Components/TicketForm';
 import websocketService from '../services/websocketService';
 import TicketDetailsModal from './Complaints/Components/TicketDetailsModal';
 import TicketList from './Complaints/Components/TicketList';
+import { Checkbox, FormControlLabel } from '@mui/material';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -818,7 +819,6 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    // Only validate locked rows
     const lockedAccess = (formData.productAccessList || []).filter(pa => pa.locked && pa.productId);
     if (lockedAccess.length === 0) {
       showAlert('Please add at least one product access.', 'error');
@@ -827,10 +827,14 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     if (!validateForm()) return;
     try {
       const token = localStorage.getItem('token');
-      // Prepare user data with multiple products and permissions
+      // Ensure permissions object exists for each product
+      const normalizedAccess = lockedAccess.map(pa => ({
+        ...pa,
+        permissions: { ...pa.permissions }
+      }));
       const userPayload = {
         ...formData,
-        productAccess: lockedAccess,
+        productAccess: normalizedAccess,
         specialPermissions: formData.specialPermissions || {},
       };
       if (formData.role === 'user' && currentUser && currentUser._id) {
@@ -853,12 +857,21 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
     try {
       const token = localStorage.getItem('token');
+      // Ensure permissions object exists for each product
+      const normalizedAccess = (formData.productAccessList || []).map(pa => ({
+        ...pa,
+        permissions: { ...pa.permissions }
+      }));
+      const userPayload = {
+        ...formData,
+        productAccess: normalizedAccess,
+        specialPermissions: formData.specialPermissions || {},
+      };
       await axios.put(
         `${API_URL}/admin/users/${selectedUser._id}`,
-        formData,
+        userPayload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       showAlert('User updated successfully', 'success');
@@ -923,7 +936,6 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
 
   const handleEditUser = (user) => {
     setSelectedUser(user);
-    // Ensure every productAccessList entry has a permissions object with all keys
     const normalizedProductAccessList = (user.productAccessList || user.productAccess || []).map(pa => ({
       ...pa,
       permissions: {
@@ -933,6 +945,7 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
         addProduct: pa.permissions?.addProduct || false,
         deleteProduct: pa.permissions?.deleteProduct || false,
         editProduct: pa.permissions?.editProduct || false,
+        view: pa.permissions?.view || false, // <-- ensure 'view' is always present
         // Add more permissions here if needed
       }
     }));
@@ -3397,6 +3410,65 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     });
   };
 
+  const handleProductPermissionChange = async (productId, permission, value) => {
+    console.log('selectedUser:', selectedUser); // DEBUG: Log selectedUser
+    // Build the updated list first
+    const updatedList = formData.productAccessList.map(pa => {
+      if (pa.productId === productId) {
+        return {
+          ...pa,
+          permissions: {
+            ...pa.permissions,
+            [permission]: value,
+          },
+        };
+      }
+      return pa;
+    });
+
+    setFormData(prev => ({
+      ...prev,
+      productAccessList: updatedList,
+    }));
+
+    // Persist change to backend if editing an existing user
+    if (selectedUser && selectedUser._id) {
+      try {
+        console.log('Permission change triggered for user:', selectedUser._id, productId, permission, value);
+        const token = localStorage.getItem('token');
+        const userPayload = {
+          productAccess: updatedList, // use the updated list here!
+          specialPermissions: formData.specialPermissions || {},
+        };
+        console.log('API_URL:', API_URL); // DEBUG: Log API_URL
+        console.log('About to make API call (fetch)', userPayload);
+        fetch(`${API_URL}/admin/users/${selectedUser._id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userPayload)
+          }
+        )
+        .then(res => res.json())
+        .then(data => {
+          console.log('API call succeeded (fetch)', data);
+          showAlert('Permission updated successfully', 'success');
+          fetchUsers && fetchUsers();
+        })
+        .catch(error => {
+          console.error('API call failed (fetch)', error);
+          showAlert('Failed to update permission', 'error');
+        });
+      } catch (error) {
+        console.error('API call failed', error);
+        showAlert(error.response?.data?.message || 'Failed to update permission', 'error');
+      }
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       {manageTicketError && (
@@ -3836,6 +3908,17 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
                                   />
                                   Edit Product
                                 </label>
+                                <FormControlLabel
+                                  control={
+                                    <Checkbox
+                                      checked={!!(access.permissions && access.permissions.view)}
+                                      onChange={e => handleProductPermissionChange(access.productId, 'view', e.target.checked)}
+                                      name="viewLead"
+                                      color="primary"
+                                    />
+                                  }
+                                  label="View Leads"
+                                />
                               </>
                             ) : (
                               <>

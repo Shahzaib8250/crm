@@ -57,10 +57,22 @@ router.get('/enterprises/:enterpriseId/quotations', authenticateToken, isSuperAd
   }
 });
 
-// Get invoices for a specific admin - Admin only
-router.get('/admin', authenticateToken, isAdmin, async (req, res) => {
+// Get invoices for a specific admin or all admins in the user's enterprise
+router.get('/admin', authenticateToken, async (req, res) => {
   try {
-    const invoices = await Invoice.find({ adminId: req.user.id });
+    let query = {};
+    if (req.user.role === 'user' || req.user.role === 'admin') {
+      const enterpriseId = req.user.enterprise?.enterpriseId;
+      if (enterpriseId) {
+        const admins = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
+        const adminIds = admins.map(a => a._id);
+        query.adminId = { $in: adminIds };
+      } else {
+        // fallback: only show invoices for the user if no enterprise
+        query.adminId = req.user.id;
+      }
+    }
+    const invoices = await Invoice.find(query);
     res.json(invoices);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

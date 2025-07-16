@@ -19,6 +19,17 @@ exports.getAllServices = async (req, res) => {
       query.category = req.query.category;
     }
     
+    // If user or admin, filter by enterprise
+    if (req.user.role === 'user' || req.user.role === 'admin') {
+      const enterpriseId = req.user.enterprise?.enterpriseId;
+      if (enterpriseId) {
+        // Find all admins in the same enterprise
+        const admins = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
+        const adminIds = admins.map(a => a._id);
+        query.createdBy = { $in: adminIds };
+      }
+    }
+    
     let services = [];
     
     services = await Service.find(query).sort({ createdAt: -1 }).populate('createdBy', 'role email enterprise');
