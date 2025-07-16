@@ -121,36 +121,32 @@ router.post('/', authenticateToken, checkPermission('users','add'), async (req, 
 // @desc    Update user
 // @access  Private/SuperAdmin or Self
 router.put('/:id', authenticateToken, checkPermission('users','edit'), async (req, res) => {
+  console.log('--- USER UPDATE ROUTE HIT ---');
   try {
     // Check if user is updating their own data or is a superadmin
     if (req.user.id !== req.params.id && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'Not authorized to update this user' });
     }
     
-    const { email, profile, role } = req.body;
-    const updateData = {};
-    
-    if (email) updateData.email = email;
-    if (profile) updateData.profile = profile;
-    
-    // Only superadmin can update roles
-    if (role && req.user.role === 'superadmin') {
-      updateData.role = role;
-    }
-    
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { $set: updateData },
-      { new: true }
-    ).select('-password');
-    
+    const { email, profile, role, productAccess } = req.body;
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+    if (email) user.email = email;
+    if (profile) user.profile = profile;
+    if (role && req.user.role === 'superadmin') user.role = role;
+    // Debug log: incoming productAccess
+    console.log('REQ.BODY.productAccess:', JSON.stringify(productAccess, null, 2));
+    if (productAccess) user.productAccess = productAccess;
+    // Debug log: user.productAccess before save
+    console.log('USER.productAccess BEFORE SAVE:', JSON.stringify(user.productAccess, null, 2));
+    await user.save();
+    // Debug log: user.productAccess after save
+    console.log('USER.productAccess AFTER SAVE:', JSON.stringify(user.productAccess, null, 2));
     res.json({
       message: 'User updated successfully',
-      user
+      user: user.toObject({ getters: true, virtuals: false })
     });
   } catch (error) {
     console.error('Update user error:', error.message);

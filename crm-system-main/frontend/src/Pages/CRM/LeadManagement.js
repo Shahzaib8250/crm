@@ -352,6 +352,15 @@ const LeadManagement = () => {
     }
   };
 
+  // Helper: Check if user has createLead permission for CRM
+  const hasCreateLeadPermission = (() => {
+    if (!currentUser || !currentUser.productAccess) return false;
+    const crmAccess = currentUser.productAccess.find(
+      (pa) => pa.productId === 'crm' && pa.hasAccess
+    );
+    return !!(crmAccess && crmAccess.permissions && crmAccess.permissions.createLead);
+  })();
+
   return (
     <div className="crm-lead-management animate-fade-in">
       {alert.show && (
@@ -380,7 +389,12 @@ const LeadManagement = () => {
         <h2>Lead Management</h2>
         <button
           className="add-btn"
+          disabled={!hasCreateLeadPermission}
           onClick={() => {
+            if (!hasCreateLeadPermission) {
+              showAlert('You are not allowed to add leads by your enterprise.', 'error');
+              return;
+            }
             resetForm();
             setOpenDialog(true);
           }}

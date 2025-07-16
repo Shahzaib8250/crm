@@ -562,13 +562,13 @@ const getCrmProducts = async (req, res) => {
     const { active, category } = req.query;
     const user = req.user;
     const enterpriseId = user.enterprise?.enterpriseId;
-    // Build query for enterprise products
     let enterpriseUsers = [];
     if (enterpriseId) {
-      enterpriseUsers = await User.find({ 'enterprise.enterpriseId': enterpriseId }, '_id');
+      // Fetch all admins in the same enterprise
+      enterpriseUsers = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
     }
     const enterpriseUserIds = enterpriseUsers.map(u => u._id.toString());
-    // Query for products created by enterprise users
+    // Query for products created by enterprise admins
     const enterpriseQuery = {
       createdBy: { $in: enterpriseUserIds },
     };

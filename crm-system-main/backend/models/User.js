@@ -1,4 +1,73 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
+
+// Define productAccessSchema with permissions as Mixed
+const productAccessSchema = new Schema({
+  productId: {
+    type: String,
+    required: true
+  },
+  hasAccess: {
+    type: Boolean,
+    default: true
+  },
+  grantedAt: {
+    type: Date,
+    default: Date.now
+  },
+  grantedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  revokedAt: {
+    type: Date
+  },
+  revokedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  accessToken: {
+    type: String,
+    sparse: true
+  },
+  accessLink: {
+    type: String,
+    sparse: true
+  },
+  accessUrl: {
+    type: String,
+    sparse: true
+  },
+  lastAccessed: {
+    type: Date
+  },
+  accessCount: {
+    type: Number,
+    default: 0
+  },
+  usageSummary: {
+    dailyActiveUsers: {
+      type: Number,
+      default: 0
+    },
+    monthlyActiveUsers: {
+      type: Number,
+      default: 0
+    },
+    totalActions: {
+      type: Number,
+      default: 0
+    }
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  permissions: {
+    type: Schema.Types.Mixed,
+    default: {}
+  }
+});
 
 const userSchema = new mongoose.Schema({
   email: { 
@@ -124,73 +193,7 @@ const userSchema = new mongoose.Schema({
     }
   },
   // Enhanced product access tracking
-  productAccess: [{
-    productId: {
-      type: String,
-      required: true
-    },
-    hasAccess: {
-      type: Boolean,
-      default: true
-    },
-    grantedAt: {
-      type: Date,
-      default: Date.now
-    },
-    grantedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    revokedAt: {
-      type: Date
-    },
-    revokedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    accessToken: {
-      type: String,
-      sparse: true
-    },
-    accessLink: {
-      type: String,
-      sparse: true
-    },
-    accessUrl: {
-      type: String,
-      sparse: true
-    },
-    // Usage analytics
-    lastAccessed: {
-      type: Date
-    },
-    accessCount: {
-      type: Number,
-      default: 0
-    },
-    usageSummary: {
-      dailyActiveUsers: {
-        type: Number,
-        default: 0
-      },
-      monthlyActiveUsers: {
-        type: Number,
-        default: 0
-      },
-      totalActions: {
-        type: Number,
-        default: 0
-      }
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now
-    },
-    permissions: {
-      type: Object,
-      default: {}
-    }
-  }]
+  productAccess: [productAccessSchema]
 }, { 
   timestamps: true 
 });

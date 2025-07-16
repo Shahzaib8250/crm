@@ -3,20 +3,36 @@ const Activity = require('../models/activity');
 const mongoose = require('mongoose');
 const { ObjectId } = mongoose.Types;
 
+// Helper to get CRM permissions from productAccess
+function getCrmPermissions(user) {
+  const crmAccess = (user.productAccess || []).find(pa => pa.productId === 'crm' && pa.hasAccess);
+  return crmAccess?.permissions || {};
+}
+
 // Get all customers (filtered by user role and assigned admin)
 const getAllCustomers = async (req, res) => {
   try {
     let query = {};
-    
-    // If admin, only show their assigned customers
     if (req.user.role === 'admin') {
       query.assignedTo = req.user.id;
+    } else if (req.user.role === 'user') {
+      // Check CRM view permission
+      const crmPerms = getCrmPermissions(req.user);
+      if (!crmPerms.view) {
+        return res.status(403).json({ message: 'You do not have permission to view leads.' });
+      }
+      // Users see all leads for their enterprise
+      const enterpriseId = req.user.enterprise?.enterpriseId;
+      if (enterpriseId) {
+        const User = require('../models/User');
+        const admins = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
+        const adminIds = admins.map(a => a._id);
+        query.assignedTo = { $in: adminIds };
+      }
     }
-    
     const customers = await Customer.find(query)
       .populate('assignedTo', 'email profile.fullName')
       .sort({ createdAt: -1 });
-      
     res.json(customers);
   } catch (error) {
     console.error('Error fetching customers:', error);
@@ -37,8 +53,22 @@ const getCustomerById = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
     }
-    
-    // Check if admin has access to this customer
+    // Users can only view if in their enterprise and have view permission
+    if (req.user.role === 'user') {
+      const crmPerms = getCrmPermissions(req.user);
+      if (!crmPerms.view) {
+        return res.status(403).json({ message: 'You do not have permission to view leads.' });
+      }
+      const enterpriseId = req.user.enterprise?.enterpriseId;
+      if (enterpriseId && customer.assignedTo) {
+        const User = require('../models/User');
+        const admin = await User.findById(customer.assignedTo);
+        if (!admin || admin.enterprise?.enterpriseId !== enterpriseId) {
+          return res.status(403).json({ message: 'You do not have access to this customer' });
+        }
+      }
+    }
+    // Admins can only view their own
     if (req.user.role === 'admin' && customer.assignedTo && 
         customer.assignedTo._id.toString() !== req.user.id) {
       return res.status(403).json({ message: 'You do not have access to this customer' });
@@ -58,6 +88,13 @@ const getCustomerById = async (req, res) => {
 // Create new customer
 const createCustomer = async (req, res) => {
   try {
+    // Only allow users to add leads if permission is set
+    if (req.user.role === 'user') {
+      const crmPerms = getCrmPermissions(req.user);
+      if (!crmPerms.createLead) {
+        return res.status(403).json({ message: 'You are not allowed to add leads. Please contact your enterprise admin.' });
+      }
+    }
     const {
       firstName,
       lastName,
@@ -144,10 +181,18 @@ const updateCustomer = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
     
-    // Check if admin has access to update this customer
-    if (req.user.role === 'admin' && 
-        customer.assignedTo && 
-        customer.assignedTo.toString() !== req.user.id) {
+    // Users can only edit if assigned to them and have editLead permission
+    if (req.user.role === 'user') {
+      const crmPerms = getCrmPermissions(req.user);
+      if (!crmPerms.editLead) {
+        return res.status(403).json({ message: 'You do not have permission to edit leads.' });
+      }
+      if (customer.assignedTo && customer.assignedTo.toString() !== req.user.id) {
+        return res.status(403).json({ message: 'You do not have permission to update this customer' });
+      }
+    }
+    // Admins can only edit their own
+    if (req.user.role === 'admin' && customer.assignedTo && customer.assignedTo.toString() !== req.user.id) {
       return res.status(403).json({ message: 'You do not have permission to update this customer' });
     }
     
@@ -208,10 +253,18 @@ const deleteCustomer = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
     
-    // Check if admin has access to delete this customer
-    if (req.user.role === 'admin' && 
-        customer.assignedTo && 
-        customer.assignedTo.toString() !== req.user.id) {
+    // Users can only delete if assigned to them and have deleteLead permission
+    if (req.user.role === 'user') {
+      const crmPerms = getCrmPermissions(req.user);
+      if (!crmPerms.deleteLead) {
+        return res.status(403).json({ message: 'You do not have permission to delete leads.' });
+      }
+      if (customer.assignedTo && customer.assignedTo.toString() !== req.user.id) {
+        return res.status(403).json({ message: 'You do not have permission to delete this customer' });
+      }
+    }
+    // Admins can only delete their own
+    if (req.user.role === 'admin' && customer.assignedTo && customer.assignedTo.toString() !== req.user.id) {
       return res.status(403).json({ message: 'You do not have permission to delete this customer' });
     }
     
