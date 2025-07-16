@@ -817,6 +817,18 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     }
   };
 
+  const ensureFullPermissions = (permissions = {}) => ({
+    createLead: permissions.createLead || false,
+    editLead: permissions.editLead || false,
+    deleteLead: permissions.deleteLead || false,
+    addProduct: permissions.addProduct || false,
+    editProduct: permissions.editProduct || false,
+    deleteProduct: permissions.deleteProduct || false,
+    viewProduct: permissions.viewProduct || false,
+    view: permissions.view || false,
+    // Add more keys as needed
+  });
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     const lockedAccess = (formData.productAccessList || []).filter(pa => pa.locked && pa.productId);
@@ -827,10 +839,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     if (!validateForm()) return;
     try {
       const token = localStorage.getItem('token');
-      // Ensure permissions object exists for each product
+      // Ensure permissions object exists for each product and is complete
       const normalizedAccess = lockedAccess.map(pa => ({
         ...pa,
-        permissions: { ...pa.permissions }
+        permissions: ensureFullPermissions(pa.permissions)
       }));
       const userPayload = {
         ...formData,
@@ -859,10 +871,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     if (!validateForm()) return;
     try {
       const token = localStorage.getItem('token');
-      // Ensure permissions object exists for each product
+      // Ensure permissions object exists for each product and is complete
       const normalizedAccess = (formData.productAccessList || []).map(pa => ({
         ...pa,
-        permissions: { ...pa.permissions }
+        permissions: ensureFullPermissions(pa.permissions)
       }));
       const userPayload = {
         ...formData,
@@ -3410,9 +3422,8 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
     });
   };
 
-  const handleProductPermissionChange = async (productId, permission, value) => {
-    console.log('selectedUser:', selectedUser); // DEBUG: Log selectedUser
-    // Build the updated list first
+  const handleProductPermissionChange = (productId, permission, value) => {
+    // Only update local state, do not call API or show alert here
     const updatedList = formData.productAccessList.map(pa => {
       if (pa.productId === productId) {
         return {
@@ -3425,48 +3436,10 @@ const AdminDashboard = ({ activeTab: initialActiveTab }) => {
       }
       return pa;
     });
-
     setFormData(prev => ({
       ...prev,
       productAccessList: updatedList,
     }));
-
-    // Persist change to backend if editing an existing user
-    if (selectedUser && selectedUser._id) {
-      try {
-        console.log('Permission change triggered for user:', selectedUser._id, productId, permission, value);
-        const token = localStorage.getItem('token');
-        const userPayload = {
-          productAccess: updatedList, // use the updated list here!
-          specialPermissions: formData.specialPermissions || {},
-        };
-        console.log('API_URL:', API_URL); // DEBUG: Log API_URL
-        console.log('About to make API call (fetch)', userPayload);
-        fetch(`${API_URL}/admin/users/${selectedUser._id}`,
-          {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(userPayload)
-          }
-        )
-        .then(res => res.json())
-        .then(data => {
-          console.log('API call succeeded (fetch)', data);
-          showAlert('Permission updated successfully', 'success');
-          fetchUsers && fetchUsers();
-        })
-        .catch(error => {
-          console.error('API call failed (fetch)', error);
-          showAlert('Failed to update permission', 'error');
-        });
-      } catch (error) {
-        console.error('API call failed', error);
-        showAlert(error.response?.data?.message || 'Failed to update permission', 'error');
-      }
-    }
   };
 
   return (

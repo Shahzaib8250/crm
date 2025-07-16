@@ -128,7 +128,7 @@ router.put('/:id', authenticateToken, checkPermission('users','edit'), async (re
       return res.status(403).json({ message: 'Not authorized to update this user' });
     }
     
-    const { email, profile, role, productAccess } = req.body;
+    const { email, profile, role, productAccess, productAccessList } = req.body;
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -136,9 +136,10 @@ router.put('/:id', authenticateToken, checkPermission('users','edit'), async (re
     if (email) user.email = email;
     if (profile) user.profile = profile;
     if (role && req.user.role === 'superadmin') user.role = role;
-    // Debug log: incoming productAccess
-    console.log('REQ.BODY.productAccess:', JSON.stringify(productAccess, null, 2));
-    if (productAccess) user.productAccess = productAccess;
+    // Accept either productAccess or productAccessList from frontend
+    const accessToSave = productAccessList || productAccess;
+    if (accessToSave) user.productAccess = accessToSave;
+    if (accessToSave) user.markModified('productAccess');
     // Debug log: user.productAccess before save
     console.log('USER.productAccess BEFORE SAVE:', JSON.stringify(user.productAccess, null, 2));
     await user.save();
