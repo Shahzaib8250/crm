@@ -121,6 +121,8 @@ router.post('/', authenticateToken, checkPermission('users','add'), async (req, 
 // @desc    Update user
 // @access  Private/SuperAdmin or Self
 router.put('/:id', authenticateToken, checkPermission('users','edit'), async (req, res) => {
+  // Debug: Log the raw incoming request body
+  console.log('RAW REQ.BODY:', JSON.stringify(req.body, null, 2));
   console.log('--- USER UPDATE ROUTE HIT ---');
   try {
     // Check if user is updating their own data or is a superadmin
