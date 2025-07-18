@@ -14,20 +14,41 @@ const getAllCustomers = async (req, res) => {
   try {
     let query = {};
     if (req.user.role === 'admin') {
-      query.assignedTo = req.user.id;
+      // Admins see all leads assigned to any user in their enterprise
+      const User = require('../models/User');
+      const enterpriseId = req.user.enterprise?.enterpriseId;
+      let userIds = [req.user.id];
+      if (enterpriseId) {
+        const users = await User.find({ 'enterprise.enterpriseId': enterpriseId }, '_id');
+        userIds = users.map(u => u._id.toString());
+      }
+      query.assignedTo = { $in: userIds };
     } else if (req.user.role === 'user') {
       // Check CRM view permission
       const crmPerms = getCrmPermissions(req.user);
       if (!crmPerms.view) {
         return res.status(403).json({ message: 'You do not have permission to view leads.' });
       }
-      // Users see all leads for their enterprise
+      // Users see:
+      // - leads assigned to their enterprise admins
+      // - leads assigned to themselves
+      // - leads they created themselves
       const enterpriseId = req.user.enterprise?.enterpriseId;
       if (enterpriseId) {
         const User = require('../models/User');
         const admins = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
         const adminIds = admins.map(a => a._id);
-        query.assignedTo = { $in: adminIds };
+        query.$or = [
+          { assignedTo: { $in: adminIds } },
+          { assignedTo: req.user.id },
+          { createdBy: req.user.id }
+        ];
+      } else {
+        // If no enterprise, just show leads assigned to or created by the user
+        query.$or = [
+          { assignedTo: req.user.id },
+          { createdBy: req.user.id }
+        ];
       }
     }
     const customers = await Customer.find(query)

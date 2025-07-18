@@ -42,14 +42,15 @@ function checkPermission(module, action) {
       ) {
         return next();
       }
-      // Allow subusers with CRM product access to view products
+      // Allow subusers with CRM product access to view/add products, services, and leads
       if (
         req.user.role === 'user' &&
         Array.isArray(req.user.productAccess) &&
         req.user.productAccess.some(pa => pa.productId === 'crm' && pa.hasAccess) &&
         (
           (module === 'products' && action === 'view') ||
-          (module === 'services' && action === 'view')
+          (module === 'services' && action === 'view') ||
+          (module === 'leads' && (action === 'view' || action === 'add'))
         )
       ) {
         return next();

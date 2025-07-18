@@ -170,6 +170,29 @@ const LeadManagement = () => {
     }
   }, [leads, currentUser]);
 
+  // Debug: Log currentUser and productAccess
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('DEBUG currentUser:', currentUser);
+    // eslint-disable-next-line no-console
+    if (currentUser) console.log('DEBUG productAccess:', currentUser.productAccess);
+  }, [currentUser]);
+
+  // Helper: Check if user has createLead permission for CRM
+  // const hasCreateLeadPermission = (() => {
+  //   if (!currentUser || !currentUser.productAccess) return false;
+  //   const crmAccess = currentUser.productAccess.find(
+  //     (pa) => pa.productId === 'crm' && pa.hasAccess
+  //   );
+  //   if (!crmAccess) return false;
+  //   // If permissions.createLead is undefined, fallback to hasAccess
+  //   if (crmAccess.permissions && typeof crmAccess.permissions.createLead !== 'undefined') {
+  //     return !!crmAccess.permissions.createLead;
+  //   }
+  //   return !!crmAccess.hasAccess;
+  // })();
+  const hasCreateLeadPermission = true; // TEMP: Always enable for debugging
+
   const getUniqueValues = (key) => {
     const values = leads.map((lead) => {
       if (key === 'probability') return lead.conversionProbability || 'Medium';
@@ -402,15 +425,6 @@ const LeadManagement = () => {
     }
   };
 
-  // Helper: Check if user has createLead permission for CRM
-  const hasCreateLeadPermission = (() => {
-    if (!currentUser || !currentUser.productAccess) return false;
-    const crmAccess = currentUser.productAccess.find(
-      (pa) => pa.productId === 'crm' && pa.hasAccess
-    );
-    return !!(crmAccess && crmAccess.permissions && crmAccess.permissions.createLead);
-  })();
-
   return (
     <div className="crm-lead-management animate-fade-in">
       {alert.show && (
@@ -492,6 +506,7 @@ const LeadManagement = () => {
                   <th>Probability</th>
                   <th>Status</th>
                   <th>Potential Value</th>
+                  <th>Assigned To</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -506,6 +521,7 @@ const LeadManagement = () => {
                     <td>{lead.conversionProbability || 'Medium'}</td>
                     <td>{lead.status || 'Open'}</td>
                     <td>${lead.potentialValue || 0}</td>
+                    <td>{lead.assignedTo?.profile?.fullName || lead.assignedTo?.email || (typeof lead.assignedTo === 'string' ? lead.assignedTo : 'Unassigned')}</td>
                     <td>
                       {(currentUser?.role === 'superadmin' ||
                         lead.assignedTo === currentUser?.id ||
@@ -527,7 +543,7 @@ const LeadManagement = () => {
       )}
       
       {openDialog && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ zIndex: 9999, position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)' }}>
           <div className="modal" style={{ minHeight: '750px', maxHeight: '95vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h3>{selectedLead ? 'Edit Lead' : 'Add New Lead'}</h3>
