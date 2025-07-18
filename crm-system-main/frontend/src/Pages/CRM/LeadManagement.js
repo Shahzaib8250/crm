@@ -52,6 +52,8 @@ const LeadManagement = () => {
   const [manageLead, setManageLead] = useState(null);
   const [manageStatus, setManageStatus] = useState('lead');
   const [manageNotes, setManageNotes] = useState('');
+  // In LeadManagement component, add state for users with CRM access
+  const [crmUsers, setCrmUsers] = useState([]);
 
   // Show alert message with auto-dismiss
   const showAlert = useCallback((message, type = 'success') => {
@@ -98,6 +100,9 @@ const LeadManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLeads(response.data);
+      // Debug log
+      // eslint-disable-next-line no-console
+      console.log('DEBUG fetchLeads result:', response.data);
       setError(null);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -108,9 +113,31 @@ const LeadManagement = () => {
     }
   }, []);
 
+  // Fetch users with CRM access created by this admin
+  const fetchCrmUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      // Get all users created by this admin
+      const response = await axios.get(`${baseUrl}/api/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Filter users with CRM access
+      const usersWithCrm = response.data.filter(user =>
+        user.productAccess && Array.isArray(user.productAccess) &&
+        user.productAccess.some(pa => pa.productId === 'crm' && pa.hasAccess)
+      );
+      setCrmUsers(usersWithCrm);
+    } catch (error) {
+      console.error('Error fetching CRM users:', error);
+    }
+  };
+
   useEffect(() => {
     fetchLeads();
     fetchAdmins();
+    fetchCrmUsers();
     
     // Get current user info
     const token = localStorage.getItem('token');
@@ -118,6 +145,9 @@ const LeadManagement = () => {
       try {
         const tokenData = JSON.parse(atob(token.split('.')[1]));
         setCurrentUser(tokenData);
+        // Debug log
+        // eslint-disable-next-line no-console
+        console.log('DEBUG setCurrentUser:', tokenData);
         
         // If admin, set assignedTo to current user's ID
         if (tokenData.role === 'admin') {
@@ -129,6 +159,17 @@ const LeadManagement = () => {
     }
   }, [navigate]);
 
+  // Debug: Log leads and currentUser after fetch
+  useEffect(() => {
+    if (leads.length && currentUser) {
+      // Print first 5 leads and currentUser
+      // eslint-disable-next-line no-console
+      console.log('DEBUG leads:', leads.slice(0, 5));
+      // eslint-disable-next-line no-console
+      console.log('DEBUG currentUser:', currentUser);
+    }
+  }, [leads, currentUser]);
+
   const getUniqueValues = (key) => {
     const values = leads.map((lead) => {
       if (key === 'probability') return lead.conversionProbability || 'Medium';
@@ -138,7 +179,16 @@ const LeadManagement = () => {
     return Array.from(new Set(values.filter(Boolean)));
   };
 
+  // Enhanced filteredLeads logic:
   const filteredLeads = leads.filter((lead) => {
+    // Superadmins see all leads
+    if (currentUser?.role === 'superadmin') return true;
+    // Show if current user is creator or assigned user (compare as strings)
+    const userId = String(currentUser?.id || currentUser?._id);
+    const createdBy = String(lead.createdBy?._id || lead.createdBy);
+    const assignedTo = String(lead.assignedTo?._id || lead.assignedTo);
+    if (userId === createdBy || userId === assignedTo) return true;
+    // Otherwise, apply filters (for completeness)
     const matchesSource = !filters.source || lead.source === filters.source;
     const matchesProbability = !filters.probability || (lead.conversionProbability || 'Medium') === filters.probability;
     const matchesStatus = !filters.status || (lead.status || 'Open') === filters.status;
@@ -457,9 +507,16 @@ const LeadManagement = () => {
                     <td>{lead.status || 'Open'}</td>
                     <td>${lead.potentialValue || 0}</td>
                     <td>
-                      <button onClick={() => handleEdit(lead)}>Edit</button>
-                      <button onClick={() => handleManage(lead)} className="manage-btn">Manage</button>
-                      <button onClick={() => handleDelete(lead._id)} className="delete-btn">Delete</button>
+                      {(currentUser?.role === 'superadmin' ||
+                        lead.assignedTo === currentUser?.id ||
+                        lead.assignedTo?._id === currentUser?.id ||
+                        lead.createdBy === currentUser?.id) && (
+                        <>
+                          <button onClick={() => handleEdit(lead)}>Edit</button>
+                          <button onClick={() => handleManage(lead)} className="manage-btn">Manage</button>
+                          <button onClick={() => handleDelete(lead._id)} className="delete-btn">Delete</button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -670,6 +727,21 @@ const LeadManagement = () => {
                   rows={4}
                   placeholder="Add or edit comments for this lead"
                 />
+              </div>
+              <div className="form-group">
+                <label htmlFor="assign-lead">Assign To</label>
+                <select
+                  id="assign-lead"
+                  value={manageLead?.assignedTo?._id || manageLead?.assignedTo || ''}
+                  onChange={e => setManageLead({ ...manageLead, assignedTo: e.target.value })}
+                >
+                  <option value="">-- Select User --</option>
+                  {crmUsers.map(user => (
+                    <option key={user._id} value={user._id}>
+                      {user.profile?.fullName || user.email}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-actions responsive-actions">
                 <button type="button" className="cancel-btn" onClick={() => setManageDialog(false)}>Cancel</button>
