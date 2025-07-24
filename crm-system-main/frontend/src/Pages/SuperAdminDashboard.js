@@ -3151,7 +3151,13 @@ const SuperAdminDashboard = () => {
           )}
         </div>
       </div>
-      <div className="notifications-area">
+      {/* 
+        Notifications Area
+        - Displays a list of notifications for the user.
+        - Allows marking all notifications as read.
+        - Each notification can be clicked to mark as read and possibly navigate.
+      */}
+      {/* <div className="notifications-area"> 
         <div className="notifications-header">
           <h3>Notifications</h3>
           {notifications.length > 0 && (
@@ -3183,7 +3189,7 @@ const SuperAdminDashboard = () => {
             ))
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Create/Edit Admin Dialog */}
       {openDialog && (
