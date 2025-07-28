@@ -33,6 +33,9 @@ const InvoiceManagement = () => {
     notes: '',
     billingPeriod: 'one time'
   });
+  const [managingInvoiceId, setManagingInvoiceId] = useState(null);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState('');
   const user = getUserInfo();
   const { addNotification } = useNotification();
 
@@ -229,6 +232,37 @@ const InvoiceManagement = () => {
     }
   };
 
+  // Add this function to handle status update
+  const handleStatusUpdate = async () => {
+    if (!managingInvoiceId) return;
+    setStatusUpdating(true);
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      if (!['paid', 'cancelled'].includes(selectedStatus)) {
+        addNotification('Only Paid or Cancelled status can be set.', 'error');
+        setStatusUpdating(false);
+        return;
+      }
+      const res = await axios.patch(
+        `${baseUrl}/api/invoices/${managingInvoiceId}/status`,
+        { status: selectedStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setInvoices(prev => prev.map(inv => inv._id === managingInvoiceId ? { ...inv, status: res.data.status } : inv));
+      addNotification('Invoice status updated', 'success');
+      setManagingInvoiceId(null);
+      setSelectedStatus('');
+    } catch (err) {
+      // Log error for debugging
+      console.error('Status update error:', err, err.response);
+      let backendMsg = err.response?.data?.message || err.message || 'Failed to update status';
+      addNotification(backendMsg, 'error');
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
   return (
     <div className="crm-module-page animate-fade-in">
       <h2>Invoice Management</h2>
@@ -338,11 +372,61 @@ const InvoiceManagement = () => {
                   <td>
                     <button className="view-btn" onClick={() => handleView(inv)}>View</button>
                     <button className="download-btn" onClick={() => downloadInvoice(inv)} style={{ marginLeft: 8 }}>Download</button>
+                    <button
+                      className="manage-btn"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => {
+                        setManagingInvoiceId(inv._id);
+                        setSelectedStatus(inv.status);
+                      }}
+                    >
+                      Manage
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {/* Manage Status Modal */}
+      {managingInvoiceId && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ minWidth: 320, maxWidth: 400 }}>
+            <div className="modal-header">
+              <h3>Manage Invoice Status</h3>
+              <button className="close-btn" onClick={() => { setManagingInvoiceId(null); setSelectedStatus(''); }}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: 16 }}>
+                <b>Current Status:</b> <span className={`status-badge status-${invoices.find(i => i._id === managingInvoiceId)?.status}`}>{invoices.find(i => i._id === managingInvoiceId)?.status}</span>
+              </div>
+              <div className="form-group">
+                <label>Change Status</label>
+                <select
+                  value={selectedStatus}
+                  onChange={e => setSelectedStatus(e.target.value)}
+                  disabled={statusUpdating}
+                  style={{ width: '100%', marginBottom: 16 }}
+                >
+                  <option value="pending" disabled>Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div className="form-actions responsive-actions">
+                <button className="cancel-btn" onClick={() => { setManagingInvoiceId(null); setSelectedStatus(''); }} disabled={statusUpdating}>Cancel</button>
+                <button className="submit-btn primary" onClick={handleStatusUpdate} disabled={statusUpdating || selectedStatus === invoices.find(i => i._id === managingInvoiceId)?.status}>Confirm</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Debug info: show user and invoice admin IDs for troubleshooting */}
+      {managingInvoiceId && (
+        <div style={{ fontSize: '0.85em', color: '#888', marginBottom: 8 }}>
+          <div>Current User ID: {user?.id}</div>
+          <div>Invoice Admin ID: {invoices.find(i => i._id === managingInvoiceId)?.adminId}</div>
         </div>
       )}
       {showModal && selectedInvoice && (

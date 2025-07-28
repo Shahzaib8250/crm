@@ -5,6 +5,10 @@ const quotationsRouter = require('./routes/quotations');
 const serviceRouter = require('./routes/serviceRoutes');
 const userRouter = require('./routes/userRoutes');
  
+// Enable CORS for all origins (development)
+const app = express();
+app.use(cors());
+
 // Register routes
 app.use('/api/quotations', quotationsRouter);
 app.use('/api/services', serviceRouter);
