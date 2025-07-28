@@ -234,7 +234,14 @@ app.get('/services/superadmin', authenticateToken, authorizeRole('superadmin'), 
   try {
     // Use MongoDB to fetch real services
     const Service = require('./models/serviceModel');
-    const services = await Service.find().sort({ createdAt: -1 });
+    // Only show services created by superadmin users
+    const User = require('./models/User');
+    const superadmins = await User.find({ role: 'superadmin' }, '_id');
+    const superadminIds = superadmins.map(a => a._id);
+    
+    const services = await Service.find({ 
+      createdBy: { $in: superadminIds } 
+    }).sort({ createdAt: -1 }).populate('createdBy', 'role email enterprise');
     
     res.status(200).json(services);
   } catch (error) {

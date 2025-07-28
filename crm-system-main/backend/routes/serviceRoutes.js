@@ -10,7 +10,7 @@ router.post('/', authenticateToken, authorizeRole('superadmin'), serviceControll
 router.get('/superadmin/quotations', authenticateToken, authorizeRole('superadmin'), serviceController.getAllQuotations);
 router.put('/superadmin/quotations/:id', authenticateToken, authorizeRole('superadmin'), serviceController.updateQuotationStatus);
 router.get('/superadmin/quotations/:id/test', authenticateToken, authorizeRole('superadmin'), serviceController.testQuotation);
-router.get('/superadmin', authenticateToken, authorizeRole('superadmin'), serviceController.getAllServices);
+router.get('/superadmin', authenticateToken, authorizeRole('superadmin'), serviceController.getAllSuperadminServices);
 router.get('/superadmin/:id', authenticateToken, authorizeRole('superadmin'), serviceController.getServiceById);
 router.put('/:id', authenticateToken, authorizeRole('superadmin'), serviceController.updateService);
 router.delete('/:id', authenticateToken, authorizeRole('superadmin'), serviceController.deleteService);

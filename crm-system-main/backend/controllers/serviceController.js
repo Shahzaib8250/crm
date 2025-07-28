@@ -54,6 +54,32 @@ exports.getAllServices = async (req, res) => {
   }
 };
 
+// Get all services created by superadmin only (for superadmin dashboard)
+exports.getAllSuperadminServices = async (req, res) => {
+  try {
+    let query = {};
+    
+    // Category filter
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+    
+    // Only show services created by superadmin users
+    const superadmins = await User.find({ role: 'superadmin' }, '_id');
+    const superadminIds = superadmins.map(a => a._id);
+    query.createdBy = { $in: superadminIds };
+    
+    let services = [];
+    
+    services = await Service.find(query).sort({ createdAt: -1 }).populate('createdBy', 'role email enterprise');
+    
+    res.status(200).json(services);
+  } catch (error) {
+    console.error('Error fetching superadmin services:', error);
+    res.status(500).json({ message: 'Failed to fetch superadmin services', error: error.message });
+  }
+};
+
 // Get a single service by ID
 exports.getServiceById = async (req, res) => {
   try {
