@@ -19,14 +19,27 @@ exports.getAllServices = async (req, res) => {
       query.category = req.query.category;
     }
     
-    // If user or admin, filter by enterprise
-    if (req.user.role === 'user' || req.user.role === 'admin') {
-      const enterpriseId = req.user.enterprise?.enterpriseId;
-      if (enterpriseId) {
-        // Find all admins in the same enterprise
-        const admins = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
-        const adminIds = admins.map(a => a._id);
-        query.createdBy = { $in: adminIds };
+    // Check if this is a CRM-specific request (from CRM dashboard)
+    const isCrmRequest = req.query.source === 'crm' || req.path.includes('/crm/');
+    
+    if (isCrmRequest) {
+      // CRM Dashboard: Only show services created by admins (enterprise-specific)
+      if (req.user.role === 'user' || req.user.role === 'admin') {
+        const enterpriseId = req.user.enterprise?.enterpriseId;
+        if (enterpriseId) {
+          // Find all admins in the same enterprise
+          const admins = await User.find({ 'enterprise.enterpriseId': enterpriseId, role: 'admin' }, '_id');
+          const adminIds = admins.map(a => a._id);
+          query.createdBy = { $in: adminIds };
+        }
+      }
+    } else {
+      // Regular Admin Dashboard: Only show services created by superadmin (global services)
+      if (req.user.role === 'admin') {
+        // Find superadmin users
+        const superadmins = await User.find({ role: 'superadmin' }, '_id');
+        const superadminIds = superadmins.map(a => a._id);
+        query.createdBy = { $in: superadminIds };
       }
     }
     

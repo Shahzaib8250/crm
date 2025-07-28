@@ -32,7 +32,7 @@ const ServiceManagement = () => {
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       // Use /user endpoint for subusers, /admin for admins
       const endpoint = user?.role === 'user' ? '/api/services/user' : '/api/services/admin';
-      const response = await axios.get(`${baseUrl}${endpoint}`, {
+      const response = await axios.get(`${baseUrl}${endpoint}?source=crm`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Only show services created by admins (not superadmin)

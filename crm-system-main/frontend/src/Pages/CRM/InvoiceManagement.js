@@ -70,7 +70,7 @@ const InvoiceManagement = () => {
       try {
         const token = localStorage.getItem('token');
         const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-        const res = await axios.get(`${baseUrl}/api/services/admin`, {
+        const res = await axios.get(`${baseUrl}/api/services/admin?source=crm`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setServices(res.data);

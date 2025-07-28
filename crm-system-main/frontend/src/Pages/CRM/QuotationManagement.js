@@ -46,7 +46,7 @@ const QuotationManagement = () => {
       const token = localStorage.getItem('token');
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const endpoint = user?.role === 'user' ? '/api/services/user' : '/api/services/admin';
-      const res = await axios.get(`${baseUrl}${endpoint}`, {
+      const res = await axios.get(`${baseUrl}${endpoint}?source=crm`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setServices(res.data);
